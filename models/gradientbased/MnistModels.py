@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from collections import OrderedDict
 
 class MNISTmodel(nn.Module):
     """
@@ -35,6 +36,13 @@ class MNISTmodel(nn.Module):
                     "softplus": nn.Softplus}
         
         self.convs, self.fc = self.make_layers(model_type, activation_type)
+        if model_type == "cnn":
+            self.switches = OrderedDict()
+            self.maxpool2d_locs = []
+            for idx, layer in enumerate(self.convs):
+                if isinstance(layer, nn.MaxPool2d):
+                    self.maxpool2d_locs.append(idx)
+                    self.switches[idx] = None
         
     def make_layers(self, model_type, activation_type):
         activation_func = self.act[activation_type.lower()]
@@ -53,7 +61,7 @@ class MNISTmodel(nn.Module):
                 activation_func(),
                 nn.Conv2d(32, 64, 3),
                 activation_func(), 
-                nn.MaxPool2d(2),
+                nn.MaxPool2d(2, return_indices=True),
             )
             fc = nn.Sequential(
                 nn.Linear(64*12*12, 128),
@@ -62,11 +70,16 @@ class MNISTmodel(nn.Module):
             )
         else:
             assert False, "please insert `model_type` = `dnn` or `cnn`"
-        return convs, fc
-        
+        return convs, fc    
+    
     def forward(self, x):
         if self.convs is not None:
-            x = self.convs(x)
+            for idx, layer in enumerate(self.convs):
+                if isinstance(layer, nn.MaxPool2d):
+                    x, indices = layer(x)
+                    self.switches[idx] = indices
+                else:
+                    x = layer(x)
         x = x.view(x.size(0), -1)
-        output = self.fc(x)
-        return output
+        x = self.fc(x)
+        return x

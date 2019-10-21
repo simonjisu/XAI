@@ -362,365 +362,357 @@
 [Training cnn-relu] manual_seed=73
 
 [Step] 1/20
-[Train] Average loss: 76.2860
-[Test] Average loss: 0.0593, Accuracy: 97.98%
+[Train] Average loss: 76.0454
+[Test] Average loss: 0.0582, Accuracy: 97.99%
 [Alert] best model saved
 ----------------------------------------
 [Step] 2/20
-[Train] Average loss: 20.9136
-[Test] Average loss: 0.0375, Accuracy: 98.78%
+[Train] Average loss: 20.9285
+[Test] Average loss: 0.0353, Accuracy: 98.78%
 [Alert] best model saved
 ----------------------------------------
 [Step] 3/20
-[Train] Average loss: 13.2768
-[Test] Average loss: 0.0380, Accuracy: 98.79%
-[Alert] best model saved
+[Train] Average loss: 13.1036
+[Test] Average loss: 0.0470, Accuracy: 98.44%
 ----------------------------------------
 [Step] 4/20
-[Train] Average loss: 9.0095
-[Test] Average loss: 0.0349, Accuracy: 98.83%
+[Train] Average loss: 8.9861
+[Test] Average loss: 0.0345, Accuracy: 98.88%
 [Alert] best model saved
 ----------------------------------------
 [Step] 5/20
-[Train] Average loss: 6.4523
-[Test] Average loss: 0.0365, Accuracy: 98.89%
-[Alert] best model saved
+[Train] Average loss: 6.2050
+[Test] Average loss: 0.0356, Accuracy: 98.87%
 ----------------------------------------
 [Step] 6/20
-[Train] Average loss: 5.5748
-[Test] Average loss: 0.0405, Accuracy: 98.82%
+[Train] Average loss: 4.9687
+[Test] Average loss: 0.0362, Accuracy: 99.12%
+[Alert] best model saved
 ----------------------------------------
 [Step] 7/20
-[Train] Average loss: 4.1259
-[Test] Average loss: 0.0396, Accuracy: 98.89%
-[Alert] best model saved
+[Train] Average loss: 3.7646
+[Test] Average loss: 0.0408, Accuracy: 98.79%
 ----------------------------------------
 [Step] 8/20
-[Train] Average loss: 3.0464
-[Test] Average loss: 0.0375, Accuracy: 98.99%
-[Alert] best model saved
+[Train] Average loss: 3.5879
+[Test] Average loss: 0.0446, Accuracy: 98.86%
 ----------------------------------------
 [Step] 9/20
-[Train] Average loss: 4.0519
-[Test] Average loss: 0.0376, Accuracy: 98.98%
+[Train] Average loss: 2.8909
+[Test] Average loss: 0.0455, Accuracy: 98.82%
 ----------------------------------------
 [Step] 10/20
-[Train] Average loss: 2.7271
-[Test] Average loss: 0.0481, Accuracy: 98.86%
+[Train] Average loss: 3.1534
+[Test] Average loss: 0.0411, Accuracy: 98.97%
 ----------------------------------------
 [Step] 11/20
-[Train] Average loss: 3.7304
-[Test] Average loss: 0.0415, Accuracy: 99.04%
-[Alert] best model saved
+[Train] Average loss: 3.0648
+[Test] Average loss: 0.0429, Accuracy: 99.04%
 ----------------------------------------
 [Step] 12/20
-[Train] Average loss: 1.4229
-[Test] Average loss: 0.0547, Accuracy: 98.66%
+[Train] Average loss: 2.1262
+[Test] Average loss: 0.0582, Accuracy: 98.62%
 ----------------------------------------
 [Step] 13/20
-[Train] Average loss: 2.2573
-[Test] Average loss: 0.0386, Accuracy: 99.02%
+[Train] Average loss: 2.4808
+[Test] Average loss: 0.0446, Accuracy: 99.00%
 ----------------------------------------
 [Step] 14/20
-[Train] Average loss: 1.9798
-[Test] Average loss: 0.0457, Accuracy: 99.10%
-[Alert] best model saved
+[Train] Average loss: 1.8707
+[Test] Average loss: 0.0442, Accuracy: 98.98%
 ----------------------------------------
 [Step] 15/20
-[Train] Average loss: 0.7241
-[Test] Average loss: 0.0468, Accuracy: 99.09%
+[Train] Average loss: 2.1183
+[Test] Average loss: 0.0479, Accuracy: 98.96%
 ----------------------------------------
 [Step] 16/20
-[Train] Average loss: 2.7419
-[Test] Average loss: 0.0609, Accuracy: 98.71%
+[Train] Average loss: 1.3393
+[Test] Average loss: 0.0451, Accuracy: 99.05%
 ----------------------------------------
 [Step] 17/20
-[Train] Average loss: 1.6640
-[Test] Average loss: 0.0526, Accuracy: 98.97%
+[Train] Average loss: 1.9949
+[Test] Average loss: 0.0502, Accuracy: 98.94%
 ----------------------------------------
 [Step] 18/20
-[Train] Average loss: 1.2379
-[Test] Average loss: 0.0659, Accuracy: 98.84%
+[Train] Average loss: 1.2451
+[Test] Average loss: 0.0458, Accuracy: 99.01%
 ----------------------------------------
 [Step] 19/20
-[Train] Average loss: 2.1442
-[Test] Average loss: 0.0506, Accuracy: 98.97%
+[Train] Average loss: 1.7385
+[Test] Average loss: 0.0546, Accuracy: 98.99%
 ----------------------------------------
 [Step] 20/20
-[Train] Average loss: 1.2700
-[Test] Average loss: 0.0595, Accuracy: 98.78%
+[Train] Average loss: 1.9738
+[Test] Average loss: 0.0509, Accuracy: 98.99%
 ----------------------------------------
 [Training cnn-tanh] manual_seed=73
 
 [Step] 1/20
-[Train] Average loss: 87.4105
-[Test] Average loss: 0.0718, Accuracy: 97.92%
+[Train] Average loss: 87.4510
+[Test] Average loss: 0.0711, Accuracy: 97.88%
 [Alert] best model saved
 ----------------------------------------
 [Step] 2/20
-[Train] Average loss: 26.8843
-[Test] Average loss: 0.0554, Accuracy: 98.39%
+[Train] Average loss: 26.4854
+[Test] Average loss: 0.0516, Accuracy: 98.45%
 [Alert] best model saved
 ----------------------------------------
 [Step] 3/20
-[Train] Average loss: 18.0790
-[Test] Average loss: 0.0521, Accuracy: 98.25%
+[Train] Average loss: 18.0049
+[Test] Average loss: 0.0506, Accuracy: 98.46%
+[Alert] best model saved
 ----------------------------------------
 [Step] 4/20
-[Train] Average loss: 14.0159
-[Test] Average loss: 0.0470, Accuracy: 98.52%
+[Train] Average loss: 14.3744
+[Test] Average loss: 0.0493, Accuracy: 98.55%
 [Alert] best model saved
 ----------------------------------------
 [Step] 5/20
-[Train] Average loss: 11.2885
-[Test] Average loss: 0.0456, Accuracy: 98.46%
+[Train] Average loss: 11.8266
+[Test] Average loss: 0.0489, Accuracy: 98.33%
 ----------------------------------------
 [Step] 6/20
-[Train] Average loss: 9.2246
-[Test] Average loss: 0.0543, Accuracy: 98.37%
+[Train] Average loss: 9.1890
+[Test] Average loss: 0.0449, Accuracy: 98.51%
 ----------------------------------------
 [Step] 7/20
-[Train] Average loss: 10.0984
-[Test] Average loss: 0.0574, Accuracy: 98.28%
+[Train] Average loss: 7.8990
+[Test] Average loss: 0.0515, Accuracy: 98.36%
 ----------------------------------------
 [Step] 8/20
-[Train] Average loss: 8.1316
-[Test] Average loss: 0.0488, Accuracy: 98.45%
+[Train] Average loss: 8.2112
+[Test] Average loss: 0.0504, Accuracy: 98.51%
 ----------------------------------------
 [Step] 9/20
-[Train] Average loss: 8.0324
-[Test] Average loss: 0.0540, Accuracy: 98.31%
+[Train] Average loss: 7.9466
+[Test] Average loss: 0.0497, Accuracy: 98.42%
 ----------------------------------------
 [Step] 10/20
-[Train] Average loss: 7.3511
-[Test] Average loss: 0.0480, Accuracy: 98.52%
-[Alert] best model saved
+[Train] Average loss: 7.2910
+[Test] Average loss: 0.0673, Accuracy: 97.99%
 ----------------------------------------
 [Step] 11/20
-[Train] Average loss: 6.8367
-[Test] Average loss: 0.0485, Accuracy: 98.42%
+[Train] Average loss: 7.1296
+[Test] Average loss: 0.0542, Accuracy: 98.35%
 ----------------------------------------
 [Step] 12/20
-[Train] Average loss: 6.8160
-[Test] Average loss: 0.0537, Accuracy: 98.47%
+[Train] Average loss: 7.0901
+[Test] Average loss: 0.0583, Accuracy: 98.30%
 ----------------------------------------
 [Step] 13/20
-[Train] Average loss: 6.5010
-[Test] Average loss: 0.0513, Accuracy: 98.39%
+[Train] Average loss: 6.3474
+[Test] Average loss: 0.0518, Accuracy: 98.44%
 ----------------------------------------
 [Step] 14/20
-[Train] Average loss: 7.1771
-[Test] Average loss: 0.0568, Accuracy: 98.25%
+[Train] Average loss: 6.5001
+[Test] Average loss: 0.0596, Accuracy: 98.19%
 ----------------------------------------
 [Step] 15/20
-[Train] Average loss: 6.3071
-[Test] Average loss: 0.0583, Accuracy: 98.31%
+[Train] Average loss: 6.4281
+[Test] Average loss: 0.0485, Accuracy: 98.57%
+[Alert] best model saved
 ----------------------------------------
 [Step] 16/20
-[Train] Average loss: 5.4875
-[Test] Average loss: 0.0590, Accuracy: 98.33%
+[Train] Average loss: 5.8411
+[Test] Average loss: 0.0536, Accuracy: 98.53%
 ----------------------------------------
 [Step] 17/20
-[Train] Average loss: 5.0227
-[Test] Average loss: 0.0606, Accuracy: 98.33%
+[Train] Average loss: 5.4336
+[Test] Average loss: 0.0484, Accuracy: 98.51%
 ----------------------------------------
 [Step] 18/20
-[Train] Average loss: 5.1050
-[Test] Average loss: 0.0652, Accuracy: 98.18%
+[Train] Average loss: 4.9897
+[Test] Average loss: 0.0548, Accuracy: 98.41%
 ----------------------------------------
 [Step] 19/20
-[Train] Average loss: 5.8265
-[Test] Average loss: 0.0597, Accuracy: 98.34%
+[Train] Average loss: 4.6212
+[Test] Average loss: 0.0623, Accuracy: 98.22%
 ----------------------------------------
 [Step] 20/20
-[Train] Average loss: 6.7674
-[Test] Average loss: 0.0645, Accuracy: 98.21%
+[Train] Average loss: 5.0992
+[Test] Average loss: 0.0550, Accuracy: 98.46%
 ----------------------------------------
 [Training cnn-sigmoid] manual_seed=73
 
 [Step] 1/20
-[Train] Average loss: 411.9733
-[Test] Average loss: 0.2414, Accuracy: 93.68%
+[Train] Average loss: 411.9560
+[Test] Average loss: 0.2396, Accuracy: 93.68%
 [Alert] best model saved
 ----------------------------------------
 [Step] 2/20
-[Train] Average loss: 81.0749
-[Test] Average loss: 0.1275, Accuracy: 96.32%
+[Train] Average loss: 81.1909
+[Test] Average loss: 0.1285, Accuracy: 96.35%
 [Alert] best model saved
 ----------------------------------------
 [Step] 3/20
-[Train] Average loss: 46.0393
-[Test] Average loss: 0.0801, Accuracy: 97.67%
+[Train] Average loss: 46.0574
+[Test] Average loss: 0.0827, Accuracy: 97.53%
 [Alert] best model saved
 ----------------------------------------
 [Step] 4/20
-[Train] Average loss: 30.1532
-[Test] Average loss: 0.0634, Accuracy: 98.13%
+[Train] Average loss: 30.1007
+[Test] Average loss: 0.0624, Accuracy: 98.05%
 [Alert] best model saved
 ----------------------------------------
 [Step] 5/20
-[Train] Average loss: 22.2069
-[Test] Average loss: 0.0575, Accuracy: 98.34%
+[Train] Average loss: 22.5751
+[Test] Average loss: 0.0565, Accuracy: 98.28%
 [Alert] best model saved
 ----------------------------------------
 [Step] 6/20
-[Train] Average loss: 16.8387
-[Test] Average loss: 0.0521, Accuracy: 98.36%
-[Alert] best model saved
+[Train] Average loss: 17.2021
+[Test] Average loss: 0.0527, Accuracy: 98.27%
 ----------------------------------------
 [Step] 7/20
-[Train] Average loss: 12.7775
-[Test] Average loss: 0.0449, Accuracy: 98.56%
+[Train] Average loss: 13.2232
+[Test] Average loss: 0.0459, Accuracy: 98.59%
 [Alert] best model saved
 ----------------------------------------
 [Step] 8/20
-[Train] Average loss: 9.8775
-[Test] Average loss: 0.0434, Accuracy: 98.65%
+[Train] Average loss: 10.2972
+[Test] Average loss: 0.0434, Accuracy: 98.69%
 [Alert] best model saved
 ----------------------------------------
 [Step] 9/20
-[Train] Average loss: 7.5684
-[Test] Average loss: 0.0429, Accuracy: 98.54%
+[Train] Average loss: 7.5402
+[Test] Average loss: 0.0434, Accuracy: 98.58%
 ----------------------------------------
 [Step] 10/20
-[Train] Average loss: 5.7358
-[Test] Average loss: 0.0396, Accuracy: 98.68%
+[Train] Average loss: 6.1528
+[Test] Average loss: 0.0378, Accuracy: 98.80%
 [Alert] best model saved
 ----------------------------------------
 [Step] 11/20
-[Train] Average loss: 4.5389
-[Test] Average loss: 0.0396, Accuracy: 98.77%
-[Alert] best model saved
+[Train] Average loss: 4.3431
+[Test] Average loss: 0.0408, Accuracy: 98.71%
 ----------------------------------------
 [Step] 12/20
-[Train] Average loss: 3.0468
-[Test] Average loss: 0.0398, Accuracy: 98.71%
+[Train] Average loss: 3.1296
+[Test] Average loss: 0.0396, Accuracy: 98.73%
 ----------------------------------------
 [Step] 13/20
-[Train] Average loss: 2.5994
-[Test] Average loss: 0.0408, Accuracy: 98.78%
+[Train] Average loss: 2.3985
+[Test] Average loss: 0.0389, Accuracy: 98.84%
 [Alert] best model saved
 ----------------------------------------
 [Step] 14/20
-[Train] Average loss: 1.4444
-[Test] Average loss: 0.0399, Accuracy: 98.79%
-[Alert] best model saved
+[Train] Average loss: 1.7661
+[Test] Average loss: 0.0407, Accuracy: 98.68%
 ----------------------------------------
 [Step] 15/20
-[Train] Average loss: 1.0357
-[Test] Average loss: 0.0393, Accuracy: 98.83%
-[Alert] best model saved
+[Train] Average loss: 1.4538
+[Test] Average loss: 0.0404, Accuracy: 98.78%
 ----------------------------------------
 [Step] 16/20
-[Train] Average loss: 0.7819
-[Test] Average loss: 0.0409, Accuracy: 98.76%
+[Train] Average loss: 4.0733
+[Test] Average loss: 0.0442, Accuracy: 98.52%
 ----------------------------------------
 [Step] 17/20
-[Train] Average loss: 0.6338
-[Test] Average loss: 0.0415, Accuracy: 98.73%
+[Train] Average loss: 2.5046
+[Test] Average loss: 0.0405, Accuracy: 98.82%
 ----------------------------------------
 [Step] 18/20
-[Train] Average loss: 0.4836
-[Test] Average loss: 0.0401, Accuracy: 98.83%
+[Train] Average loss: 0.8591
+[Test] Average loss: 0.0367, Accuracy: 98.96%
 [Alert] best model saved
 ----------------------------------------
 [Step] 19/20
-[Train] Average loss: 0.3922
-[Test] Average loss: 0.0407, Accuracy: 98.88%
-[Alert] best model saved
+[Train] Average loss: 0.3882
+[Test] Average loss: 0.0379, Accuracy: 98.93%
 ----------------------------------------
 [Step] 20/20
-[Train] Average loss: 0.3124
-[Test] Average loss: 0.0401, Accuracy: 98.82%
+[Train] Average loss: 0.2900
+[Test] Average loss: 0.0381, Accuracy: 98.93%
 ----------------------------------------
 [Training cnn-softplus] manual_seed=73
 
 [Step] 1/20
-[Train] Average loss: 362.1207
-[Test] Average loss: 0.1959, Accuracy: 94.23%
+[Train] Average loss: 362.1210
+[Test] Average loss: 0.1959, Accuracy: 94.20%
 [Alert] best model saved
 ----------------------------------------
 [Step] 2/20
-[Train] Average loss: 55.3185
-[Test] Average loss: 0.0824, Accuracy: 97.37%
+[Train] Average loss: 55.3024
+[Test] Average loss: 0.0830, Accuracy: 97.37%
 [Alert] best model saved
 ----------------------------------------
 [Step] 3/20
-[Train] Average loss: 31.1551
-[Test] Average loss: 0.0560, Accuracy: 98.23%
+[Train] Average loss: 31.4093
+[Test] Average loss: 0.0546, Accuracy: 98.27%
 [Alert] best model saved
 ----------------------------------------
 [Step] 4/20
-[Train] Average loss: 22.5264
-[Test] Average loss: 0.0502, Accuracy: 98.43%
+[Train] Average loss: 22.5215
+[Test] Average loss: 0.0517, Accuracy: 98.38%
 [Alert] best model saved
 ----------------------------------------
 [Step] 5/20
-[Train] Average loss: 17.8268
-[Test] Average loss: 0.0451, Accuracy: 98.63%
+[Train] Average loss: 17.6130
+[Test] Average loss: 0.0432, Accuracy: 98.66%
 [Alert] best model saved
 ----------------------------------------
 [Step] 6/20
-[Train] Average loss: 13.5282
-[Test] Average loss: 0.0469, Accuracy: 98.62%
+[Train] Average loss: 13.3509
+[Test] Average loss: 0.0524, Accuracy: 98.49%
 ----------------------------------------
 [Step] 7/20
-[Train] Average loss: 10.6652
-[Test] Average loss: 0.0465, Accuracy: 98.80%
+[Train] Average loss: 10.5465
+[Test] Average loss: 0.0464, Accuracy: 98.73%
 [Alert] best model saved
 ----------------------------------------
 [Step] 8/20
-[Train] Average loss: 8.2741
-[Test] Average loss: 0.0516, Accuracy: 98.62%
+[Train] Average loss: 8.4615
+[Test] Average loss: 0.0483, Accuracy: 98.64%
 ----------------------------------------
 [Step] 9/20
-[Train] Average loss: 6.4597
-[Test] Average loss: 0.0452, Accuracy: 98.76%
+[Train] Average loss: 7.2048
+[Test] Average loss: 0.0468, Accuracy: 98.73%
+[Alert] best model saved
 ----------------------------------------
 [Step] 10/20
-[Train] Average loss: 5.3350
-[Test] Average loss: 0.0493, Accuracy: 98.87%
-[Alert] best model saved
+[Train] Average loss: 5.3474
+[Test] Average loss: 0.0550, Accuracy: 98.69%
 ----------------------------------------
 [Step] 11/20
-[Train] Average loss: 3.9453
-[Test] Average loss: 0.0565, Accuracy: 98.64%
+[Train] Average loss: 4.2043
+[Test] Average loss: 0.0640, Accuracy: 98.51%
 ----------------------------------------
 [Step] 12/20
-[Train] Average loss: 4.0037
-[Test] Average loss: 0.0539, Accuracy: 98.65%
+[Train] Average loss: 4.6805
+[Test] Average loss: 0.0619, Accuracy: 98.49%
 ----------------------------------------
 [Step] 13/20
-[Train] Average loss: 3.7900
-[Test] Average loss: 0.0626, Accuracy: 98.72%
+[Train] Average loss: 4.0756
+[Test] Average loss: 0.0666, Accuracy: 98.57%
 ----------------------------------------
 [Step] 14/20
-[Train] Average loss: 3.1801
-[Test] Average loss: 0.0709, Accuracy: 98.64%
+[Train] Average loss: 3.3214
+[Test] Average loss: 0.0552, Accuracy: 98.76%
+[Alert] best model saved
 ----------------------------------------
 [Step] 15/20
-[Train] Average loss: 3.6474
-[Test] Average loss: 0.0584, Accuracy: 98.69%
+[Train] Average loss: 2.7813
+[Test] Average loss: 0.0611, Accuracy: 98.67%
 ----------------------------------------
 [Step] 16/20
-[Train] Average loss: 2.6633
-[Test] Average loss: 0.0577, Accuracy: 98.87%
-[Alert] best model saved
+[Train] Average loss: 2.8195
+[Test] Average loss: 0.0727, Accuracy: 98.55%
 ----------------------------------------
 [Step] 17/20
-[Train] Average loss: 2.2125
-[Test] Average loss: 0.0694, Accuracy: 98.88%
-[Alert] best model saved
+[Train] Average loss: 2.3461
+[Test] Average loss: 0.0704, Accuracy: 98.64%
 ----------------------------------------
 [Step] 18/20
-[Train] Average loss: 1.7529
-[Test] Average loss: 0.0800, Accuracy: 98.63%
+[Train] Average loss: 2.7944
+[Test] Average loss: 0.0646, Accuracy: 98.84%
+[Alert] best model saved
 ----------------------------------------
 [Step] 19/20
-[Train] Average loss: 2.6806
-[Test] Average loss: 0.0810, Accuracy: 98.71%
+[Train] Average loss: 2.5241
+[Test] Average loss: 0.0607, Accuracy: 98.89%
+[Alert] best model saved
 ----------------------------------------
 [Step] 20/20
-[Train] Average loss: 3.2695
-[Test] Average loss: 0.0776, Accuracy: 98.78%
+[Train] Average loss: 3.3160
+[Test] Average loss: 0.0875, Accuracy: 98.57%
 ----------------------------------------
