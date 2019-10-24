@@ -43,13 +43,27 @@ class relLinear(nn.Linear):
         function rho(w) is applied
         """
         eps = 1e-6
-        # (B, in_f, 1) * (1, in_f, out_f) = (B, in_f, out_f)
-        z = self.input.unsqueeze(-1) * self.rho(self.weight).transpose(0, 1).unsqueeze(0)
-        # (B, 1, out_f)
-        denominator = self.output.unsqueeze(1) + 1e-6 * torch.sign(self.output.unsqueeze(1))  
-        weight = z / denominator
-        # (B, in_f, out_f) x (B, out_f, 1) = (B, in_f)
-        r_next = torch.bmm(weight, r.unsqueeze(-1)).squeeze()
+        ### implementation method 1
+        ## Step 1: (B, in_f, 1) * (1, in_f, out_f) = (B, in_f, out_f)
+        # z = self.input.unsqueeze(-1) * self.rho(self.weight).transpose(0, 1).unsqueeze(0)
+        ## Step 2: (B, 1, out_f)
+        # s = self.output.unsqueeze(1) + eps * torch.sign(self.output.unsqueeze(1))
+        ## Step 3: (B, 1, out_f)
+        # weight = z / s
+        ## Step 4: (B, in_f, out_f) x (B, out_f, 1) = (B, in_f)
+        # r_next = torch.bmm(weight, r.unsqueeze(-1)).squeeze()
+        
+        ### implemetation method 2
+        # Step 1: (B, out_f) 
+        s = self.output + eps * torch.sign(self.output)  
+        # Step 2: (B, out_f) / (B, out_f) = (B, out_f)
+        e = r / s
+        # Step 3: (B, in_f, out_f) * (B, out_f, 1) = (B, in_f)
+        c = torch.bmm(self.weight.transpose(0, 1).expand(e.size(0), self.in_features, self.out_features), 
+                      e.unsqueeze(-1)).squeeze()
+        # Step 4: (B, in_f) x (B, in_f) = (B, in_f)
+        r_next = self.input * c
+        
         assert r_next.size(1) == self.in_features, "size of `r_next` is not correct"
         return r_next
     
