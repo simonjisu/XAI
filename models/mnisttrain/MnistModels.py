@@ -2,6 +2,39 @@ import torch
 import torch.nn as nn
 from collections import OrderedDict
 
+class Reshape(nn.Module):
+    def __init__(self):
+        """
+        reshape layer
+        - forward: flatten at convs > linear
+        - backward: unflatten at linear > convs     
+        """
+        super(Reshape, self).__init__()
+    
+    def forward(self, x):
+        """
+        reshape input to output
+        input: (B, C, H, W)
+        output: (B, C*H*W)
+        """
+        self.B, self.C, self.H, self.W = x.size()
+        return x.view(B, -1)
+    
+    def relprop(self, x):
+        """
+        lrp method
+            > * must run after `self.forward`
+            > 
+            > forward shape
+            > input: (B, C, H, W)
+            > output: (B, C*H*W)
+
+        - relprop shape
+        r = (l+1)-th layer: (B, C*H*W)
+        r_next = l-th layer: (B, C, H, W)
+        """
+        return x.view(-1, self.C, self.H, self.W)
+
 class MNISTmodel(nn.Module):
     """
     paper implementation 'https://arxiv.org/abs/1711.06104'

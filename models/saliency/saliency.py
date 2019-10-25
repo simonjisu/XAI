@@ -3,12 +3,13 @@ import torch.nn as nn
 
 class saliencyMNIST(nn.Module):
     def __init__(self, model):
+        super(saliencyMNIST, self).__init__()
         """
         model_type: "dnn", "cnn"
         activation_type: "relu", "tanh", "sigmoid", "softplus"
         """
         super(saliencyMNIST, self).__init__()
-        
+
         self.activation_func = model.activation_func
         self.model_type = model.model_type
         self.activation_type = model.activation_type
@@ -30,10 +31,3 @@ class saliencyMNIST(nn.Module):
         x.requires_grad_(requires_grad=False)
         
         return x.grad.clone() * x
-
-    
-    def cal_relavance(self, method, layer):
-        """
-        method = 'lrp', 'deeplift' 
-        """
-        
