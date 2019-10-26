@@ -18,7 +18,7 @@ torchvision == 0.4.1
     
 to start train model run code:
 > ```bash
-> python -u ./models/mnisttrain/MnistTrain.py
+> python -u ./models/mnist/MnistTrain.py
 > ```
     
 see training log at `./trainlog/no1.log`
@@ -34,3 +34,12 @@ see training log at `./trainlog/no1.log`
 |cnn|sigmoid|98.88%|
 |cnn|softplus|98.9%|
 
+### TODO
+
+- [x] Implement 'DeconvNet'
+- [x] Implement 'LRP'
+- [x] Implement 'Vanilla Saliency'
+- [ ] Implement 'Integrated Gradients'
+- [ ] Implement 'DeepLIFT'
+- [ ] Implement 'evaluation metric'
+- [ ] Build a Visualization Demo
