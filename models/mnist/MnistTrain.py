@@ -1,4 +1,6 @@
 # https://arxiv.org/abs/1711.06104
+# models/mnist
+
 from pathlib import Path
 import torch
 import torch.nn as nn
@@ -124,7 +126,7 @@ def main(model_types, activation_types, **kwargs):
             best_acc = main_train(model, train_loader, test_loader, n_step, logterm, str(sv_path), device)
             # record best model accruacy automatically
             with record_path.open(mode="a", encoding="utf-8") as f:
-                f.write(f"|{model_type}|{activation_type}|{best_acc}%|\n")
+                f.write(f"|{model_type}|{activation_type}|{best_acc:.2f}%|\n")
             
 if __name__ == "__main__":
     

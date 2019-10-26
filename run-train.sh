@@ -1,1 +1,1 @@
-nohup python -u ./models/gradientbased/MnistTrain.py > trainlog/no1.log &
+nohup python -u ./models/mnist/MnistTrain.py > trainlog/no1.log &

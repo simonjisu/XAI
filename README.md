@@ -28,8 +28,9 @@ see training log at `./trainlog/no1.log`
 |dnn|relu|98.33%|
 |dnn|tanh|97.65%|
 |dnn|sigmoid|98.08%|
-|dnn|softplus|98.2%|
-|cnn|relu|99.12%|
+|dnn|softplus|98.20%|
+|cnn|relu|99.16%|
 |cnn|tanh|98.57%|
-|cnn|sigmoid|98.96%|
-|cnn|softplus|98.89%|
+|cnn|sigmoid|98.88%|
+|cnn|softplus|98.9%|
+

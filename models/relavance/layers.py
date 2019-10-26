@@ -1,7 +1,11 @@
+__author__ = "simonjisu"
+# models/relavance
+
 import torch
 import torch.nn as nn
 
 class relLinear(nn.Linear):
+    """relLinear"""
     def __init__(self, linear):
         super(nn.Linear, self).__init__()
         self.in_features = linear.in_features
@@ -45,17 +49,18 @@ class relLinear(nn.Linear):
         eps = 1e-6
         w = self.rho(self.weight, use_rho)
         ### implementation method 1
-        ## (B, in_f, 1) * (1, in_f, out_f) = (B, in_f, out_f)
-        #z = self.input.unsqueeze(-1) * self.rho(self.weight).transpose(0, 1).unsqueeze(0)
-        ## (B, 1, out_f)
-        #s = self.output.unsqueeze(1) + eps * torch.sign(self.output.unsqueeze(1))  
-        #weight = z / s
-        ## (B, in_f, out_f) x (B, out_f, 1) = (B, in_f)
-        #r_next = torch.bmm(weight, r.unsqueeze(-1)).squeeze()
+        ## Step 1: (B, in_f, 1) * (1, in_f, out_f) = (B, in_f, out_f)
+        # z = self.input.unsqueeze(-1) * self.rho(self.weight).transpose(0, 1).unsqueeze(0)
+        ## Step 2: (B, 1, out_f), do not multiply `torch.sign(self.output.unsqueeze(1))` that returns `nan` in tensor
+        # s = self.output.unsqueeze(1) + eps * torch.sign(self.output.unsqueeze(1))  
+        ## Step 3:
+        # weight = z / s
+        ## Step 4: (B, in_f, out_f) x (B, out_f, 1) = (B, in_f)
+        # r_next = torch.bmm(weight, r.unsqueeze(-1)).squeeze()
         
         ### implemetation method 2
-        # Step 1: (B, out_f) 
-        s = self.output + eps * torch.sign(self.output)  
+        # Step 1: (B, out_f), do not multiply `torch.sign(self.output)` that returns `nan` in tensor
+        s = self.output + eps 
         # Step 2: (B, out_f) / (B, out_f) = (B, out_f)
         e = r / s
         # Step 3: (B, in_f, out_f) * (B, out_f, 1) = (B, in_f)
@@ -67,7 +72,15 @@ class relLinear(nn.Linear):
         assert r_next.size(1) == self.in_features, "size of `r_next` is not correct"
         return r_next
     
+    
+class relReLU(nn.ReLU):
+    """relReLU"""
+    def relprop(self, r, use_rho=False): 
+        return r
+    
+    
 class relConv2d(nn.Conv2d):
+    """relConv2d"""
     def __init__(self, conv2d):
         super(nn.Conv2d, self).__init__(conv2d.in_channels, 
                                         conv2d.out_channels, 
@@ -155,8 +168,8 @@ class relConv2d(nn.Conv2d):
         """
         eps = 1e-6
         w = self.rho(self.weight, use_rho)
-        # Step 1: (B, C_out, H_out, W_out) 
-        s = self.output + eps * torch.sign(self.output)  
+        # Step 1: (B, C_out, H_out, W_out), do not multiply `torch.sign(self.output)` that returns `nan` in tensor
+        s = self.output + eps 
         # Step 2: (B, C_out, H_out, W_out) / (B, C_out, H_out, W_out) = (B, C_out, H_out, W_out)
         e = r / s
         # Step 3: (B, C_out, H_out, W_out) --> (B, C_in, H, W)
@@ -166,35 +179,57 @@ class relConv2d(nn.Conv2d):
         r_next = self.input * c
         return r_next
     
-class Reshape(nn.Module):
-    def __init__(self):
-        """
-        reshape layer
-        - forward: flatten at convs > linear
-        - backward: unflatten at linear > convs     
-        """
-        super(Reshape, self).__init__()
+
+class relMaxPool2d(nn.MaxPool2d):
+    """relMaxPool2d"""
+    def __init__(self, maxpool2d):
+        super(nn.MaxPool2d, self).__init__(maxpool2d.kernel_size,
+                                           maxpool2d.stride,
+                                           maxpool2d.padding,
+                                           maxpool2d.dilation,
+                                           maxpool2d.return_indices,
+                                           maxpool2d.ceil_mode)    
+        self.input = None
+        self.output = None
+        self.register()
+
+    def register(self):
+        self.register_forward_hook(self.hook_function)
     
-    def forward(self, x):
-        """
-        reshape input to output
-        input: (B, C, H, W)
-        output: (B, C*H*W)
-        """
-        self.B, self.C, self.H, self.W = x.size()
-        return x.view(B, -1)
+    def hook_function(self, *x):
+        _, i, o = x
+        self.input = i[0].data
+        self.output = o[0].data
+        
+    def gradprop(self, x):
+        _, switches = torch.nn.functional.max_pool2d(self.input, self.kernel_size, self.stride, self.padding, 
+                                                     self.dilation, self.ceil_mode, return_indices=True)
+        c = torch.nn.functional.max_unpool2d(x, switches, self.kernel_size, self.stride, self.padding)
+        return c
     
-    def relprop(self, x):
+    def relprop(self, r, use_rho=False):
         """
         lrp method
             > * must run after `self.forward`
             > 
             > forward shape
             > input: (B, C, H, W)
-            > output: (B, C*H*W)
+            > output: (B, C, H_out, W_out)
 
         - relprop shape
-        r = (l+1)-th layer: (B, C*H*W)
+        r = (l+1)-th layer: (B, C, H_out, W_out)
         r_next = l-th layer: (B, C, H, W)
+        
+        rho: no use
         """
-        return x.view(-1, self.C, self.H, self.W)
+        eps = 1e-6
+        # Step 1: (B, C, H_out, W_out), do not multiply `torch.sign(self.output)` that returns `nan` in tensor
+        s = self.output + eps
+        # Step 2: (B, C, H_out, W_out) / (B, C, H_out, W_out) = (B, C, H_out, W_out)
+        e = r / s
+        # Step 3: (B, C, H_out, W_out) --> (B, C, H, W)
+        # same as `self.gradprop(s*e)` or `(s*e).backward(); c=self.input.grad`
+        c = self.gradprop(e)
+        # Step 4: (B, C, H, W) x (B, C, H, W) = (B, C_in, H, W)
+        r_next = self.input * c
+        return r_next

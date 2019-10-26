@@ -1,33 +1,31 @@
 import torch
 import torch.nn as nn
+from copy import deepcopy
 
 class saliencyMNIST(nn.Module):
-    def __init__(self, model):
-        super(saliencyMNIST, self).__init__()
+    def __init__(self, model, load_path=None):
         """
-        model_type: "dnn", "cnn"
-        activation_type: "relu", "tanh", "sigmoid", "softplus"
+        do not load model parameters first
         """
         super(saliencyMNIST, self).__init__()
-
+        assert load_path, "insert `load_path` model"        
+        
+        # vanilla saliency
         self.activation_func = model.activation_func
         self.model_type = model.model_type
         self.activation_type = model.activation_type
-        self.convs_len = model.convs_len
-        self.fc_len = model.fc_len
-        # TODO: rewrite code
+
         self.model = deepcopy(model)
+        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
         self.model.eval()
         
     def generate_saliency(self, x, target):
         """vanilla gradient*input"""
         x.requires_grad_(requires_grad=True)
         self.model.zero_grad()
-        output = self.model(x)
-        grad_outputs = torch.zeros_like(output)
-        grad_outputs[:, target] = 1
-
-        output.backward(gradient=grad_outputs)
+        o = self.model(x)
+        grad_outputs = torch.zeros_like(o).scatter(1, target.unsqueeze(1), 1).detach()
+        o.backward(gradient=grad_outputs)
         x.requires_grad_(requires_grad=False)
         
         return x.grad.clone() * x

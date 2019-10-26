@@ -1,0 +1,71 @@
+__author__ = "simonjisu"
+# models/relavance
+
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).absolute().parent.parent))
+from reshape import Reshape
+
+import torch
+import torch.nn as nn
+from collections import OrderedDict
+from copy import deepcopy
+from layers import relLinear, relConv2d, relMaxPool2d, relReLU
+
+class lrpMNIST(nn.Module):
+    """lrpMNIST"""
+    def __init__(self, model, load_path=None):
+        """
+        do not load model parameters first
+        """
+        super(lrpMNIST, self).__init__()
+        assert load_path, "insert `load_path` model"
+
+        # lrp
+        self.activation_func = model.activation_func
+        self.model_type = model.model_type
+        self.activation_type = model.activation_type
+        
+        self.model = deepcopy(model)
+        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
+        self.layers = self.lrp_make_layers(self.model)
+        
+        self.activation_maps = OrderedDict()
+        
+    def lrp_make_layers(self, model):
+        layers = []
+        mapping_dict = {nn.Linear: relLinear, nn.Conv2d: relConv2d, nn.MaxPool2d: relMaxPool2d, 
+                        nn.ReLU: relReLU}
+        for layer in model.layers:
+            if isinstance(layer, Reshape):
+                layers.append(layer)
+            else:
+                layers.append(mapping_dict[layer.__class__](layer))
+                
+        return nn.Sequential(*layers)
+    
+    def forward(self, x):
+        """
+        lrp method
+        must run forward first to save input and output at each layer
+        """
+        for layer in self.layers:
+            x = layer(x)
+        return x
+    
+    def save_activation_maps(self, layer, typ, idx, x):
+        if isinstance(layer, typ):
+            layer_name = f"({idx}) {str(layer).split('(')[0]}"
+            self.activation_maps[layer_name] = x
+    
+    def relprop(self, x, store=False, use_rho=False):
+        """
+        store: if True, save activation maps
+        """
+        o = self.forward(x).detach()
+        r = o * torch.zeros_like(o).scatter(1, o.argmax(1, keepdim=True), 1)
+        for idx, layer in enumerate(self.layers[::-1]):
+            r = layer.relprop(r, use_rho)
+            if store:
+                self.save_activation_maps(layer, relConv2d, idx, r)
+        return r

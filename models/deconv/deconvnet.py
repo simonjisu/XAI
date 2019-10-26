@@ -1,56 +1,99 @@
+__author__ = "simonjisu"
+# models/deconv
+
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).absolute().parent.parent))
+from reshape import Reshape
+
+
 import torch
 import torch.nn as nn
+from collections import OrderedDict
+from copy import deepcopy
 
 class deconvMNIST(nn.Module):
-    def __init__(self, model):
+    """deconvMNIST"""
+    def __init__(self, model, load_path=None):
+        """
+        do not load model parameters first
+        """
         super(deconvMNIST, self).__init__()
-                
+        assert load_path, "insert `load_path` model"
         # deconv
         self.activation_func = model.activation_func
         self.model_type = model.model_type
         self.activation_type = model.activation_type
-        self.convs_len = model.convs_len
-        self.fc_len = model.fc_len
-        if self.model_type == "cnn":
-            self.switches = model.switches
-        self.convs, self.fc = self.deconv_make_layers()
         
-    def deconv_make_layers(self):
-        if self.model_type.lower() == "dnn":
-            convs = None
-            fc = nn.Sequential(
-                nn.Linear(10, 512),
-                self.activation_func(), 
-                nn.Linear(512, 512),
-                self.activation_func(), 
-                nn.Linear(512, 28*28),
-            )
-        elif self.model_type.lower() == "cnn":
-            fc = nn.Sequential(
-                nn.Linear(10, 128),
-                self.activation_func(),
-                nn.Linear(128, 64*12*12)    
-            )
-            convs = nn.Sequential(
-                nn.MaxUnpool2d(2),
-                self.activation_func(), 
-                nn.ConvTranspose2d(64, 32, 3),
-                self.activation_func(),
-                nn.ConvTranspose2d(32, 1, 3),
-            )
-        else:
-            assert False, "[init error] `model` doesn't have `model_type` or `activation_func` attrs"
-        return convs, fc
+        self.model = deepcopy(model)
+        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
+        self.turn_on_return_indices()
+        self.layers = self.deconv_make_layers(self.model)
+        
+        self.activation_maps = OrderedDict()
+        
+    def turn_on_return_indices(self):
+        for layer in self.model.layers:
+            if isinstance(layer, nn.MaxPool2d):
+                layer.return_indices = True
+        
+    def deconv_make_layers(self, model):
+        layers = []
+        for layer in model.layers[::-1]:
+            if isinstance(layer, nn.Linear):
+                temp_layer = nn.Linear(layer.out_features, layer.in_features, bias=False)
+                temp_layer.weight.data = layer.weight.T.data
+#                 temp_layer.bias.data = layer.bias.data
+                layers.append(temp_layer)
+            elif isinstance(layer, nn.Conv2d):
+                temp_layer = nn.ConvTranspose2d(layer.out_channels,
+                                                layer.in_channels,
+                                                layer.kernel_size, 
+                                                layer.stride, 
+                                                layer.padding,
+                                                layer.output_padding,
+                                                layer.groups, 
+                                                False,  # bias
+                                                layer.dilation,
+                                                layer.padding_mode)
+                temp_layer.weight.data = layer.weight.data
+#                 temp_layer.bias.data = layer.bias.data
+                layers.append(temp_layer)
+            elif isinstance(layer, nn.MaxPool2d):
+                temp_layer = nn.MaxUnpool2d(layer.kernel_size,
+                                            layer.stride,
+                                            layer.padding)
+                layers.append(temp_layer)
+            else:
+                layers.append(layer)
+                
+        return nn.Sequential(*layers)        
     
-    def forward(self, t):
-        x = self.fc(t)
-        if self.convs is not None:
-            x = x.view(x.size(0), 64, 12, 12)
-            for idx, layer in enumerate(self.convs):
-                if isinstance(layer, nn.MaxUnpool2d):
-                    x = layer(x, self.switches[self.convs_len - 1 - idx])
-                else:
-                    x = layer(x)
-        return x
+    def save_activation_maps(self, layer, typ, idx, x):
+        if isinstance(layer, typ):
+            layer_name = f"({idx}) {str(layer).split('(')[0]}"
+            self.activation_maps[layer_name] = x
     
-    # TODO: write code for a specific layer's activation map
+    def deconv(self, x, store=False):
+        """
+        store: if True, save activation maps
+        """
+        switches = OrderedDict()
+        for idx, layer in enumerate(self.model.layers):
+            if isinstance(layer, nn.MaxPool2d):
+                x, indices = layer(x)
+                switches[idx] = indices
+            else:
+                x = layer(x)
+        
+        o = x
+        for idx, layer in enumerate(self.layers):
+            if isinstance(layer, nn.MaxUnpool2d):
+                o = layer(o, switches[len(self.layers)-1-idx])
+            elif isinstance(layer, Reshape):
+                o = layer(o, backward=True)
+            else:
+                o = layer(o)
+                if store:
+                    self.save_activation_maps(layer, nn.ConvTranspose2d, idx, o)
+        return o
