@@ -25,26 +25,32 @@ class deconvMNIST(nn.Module):
         self.model_type = model.model_type
         self.activation_type = model.activation_type
         
-        self.model = deepcopy(model)
-        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
-        self.turn_on_return_indices()
-        self.layers = self.deconv_make_layers(self.model)
+        model.load_state_dict(torch.load(load_path, map_location="cpu"))
+        self.layers = self.deconv_make_layers(model)
         
         self.activation_maps = OrderedDict()
         
-    def turn_on_return_indices(self):
-        for layer in self.model.layers:
-            if isinstance(layer, nn.MaxPool2d):
-                layer.return_indices = True
-        
     def deconv_make_layers(self, model):
         layers = []
-        for layer in model.layers[::-1]:
+        
+        conv_pos = {}  # {deconv : conv}
+        conv_locs = [i for i, l in enumerate(model.layers) if isinstance(l, nn.Conv2d)]
+        # [0, 3]
+        # {6: 0, 999: 3}
+        for idx, i in enumerate(conv_locs):
+            if idx == (len(conv_locs) - 1):
+                conv_pos[999] = i
+            else:
+                j = len(model.layers) - conv_locs[idx+1] -1
+                conv_pos[j] = i 
+        conv_pos_reverse = {v: k for k, v in conv_pos.items()}
+        for idx, layer in enumerate(model.layers[::-1]):
             if isinstance(layer, nn.Linear):
-                temp_layer = nn.Linear(layer.out_features, layer.in_features, bias=False)
-                temp_layer.weight.data = layer.weight.T.data
+                pass
+#                 temp_layer = nn.Linear(layer.out_features, layer.in_features, bias=False)
+#                 temp_layer.weight.data = layer.weight.T.data
 #                 temp_layer.bias.data = layer.bias.data
-                layers.append(temp_layer)
+#                 layers.append(temp_layer)
             elif isinstance(layer, nn.Conv2d):
                 temp_layer = nn.ConvTranspose2d(layer.out_channels,
                                                 layer.in_channels,
@@ -57,7 +63,11 @@ class deconvMNIST(nn.Module):
                                                 layer.dilation,
                                                 layer.padding_mode)
                 temp_layer.weight.data = layer.weight.data
-#                 temp_layer.bias.data = layer.bias.data
+                # add bias to previous layer, 
+                # cannot add last conv layer, size doesn't match
+                check_idx = len(model.layers) - 1 - idx
+                if conv_pos_reverse[check_idx] != 999:  # if it is not last conv
+                    temp_layer.bias.data = model.layers[conv_pos[check_idx]]
                 layers.append(temp_layer)
             elif isinstance(layer, nn.MaxPool2d):
                 temp_layer = nn.MaxUnpool2d(layer.kernel_size,
@@ -67,14 +77,14 @@ class deconvMNIST(nn.Module):
             else:
                 layers.append(layer)
                 
-        return nn.Sequential(*layers)        
+        return nn.Sequential(*layers)
     
     def save_activation_maps(self, layer, typ, idx, x):
         if isinstance(layer, typ):
             layer_name = f"({idx}) {str(layer).split('(')[0]}"
             self.activation_maps[layer_name] = x
     
-    def deconv(self, x, store=False):
+    def deconv(self, x, switches, store=False):
         """
         store: if True, save activation maps
         """

@@ -21,11 +21,12 @@ class MNISTmodel(nn.Module):
             Linear: 512, 512
             Linear: 512, 10
         - CNN: 
-            Conv2d: (1, 32, 3)
-            Conv2d: (32, 64, 3)
-            MaxPool2d: (2)
-            Reshape: 12,12 > 12*12
-            Linear: (64*12*12, 128)
+            Conv2d: (1, 32, 5)      28 > 24
+            MaxPool2d: (2)          24 > 12
+            Conv2d: (32, 64, 3)     12 > 10
+            MaxPool2d: (2)          10 > 5
+            Reshape: 5,5 > 5*5 
+            Linear: (64*5*5, 128)
             Linear: (128, 10)
 
             ** Conv2d = (in_kernels, out_kernels, kernel_size)
@@ -64,13 +65,14 @@ class MNISTmodel(nn.Module):
             )
         elif model_type.lower() == "cnn":
             layers = nn.Sequential(
-                nn.Conv2d(1, 32, 3),
+                nn.Conv2d(1, 32, 5),
                 self.activation_func(),
+                nn.MaxPool2d(2),
                 nn.Conv2d(32, 64, 3),
                 self.activation_func(), 
                 nn.MaxPool2d(2),
                 Reshape(),
-                nn.Linear(64*12*12, 128),
+                nn.Linear(64*5*5, 128),
                 self.activation_func(),
                 nn.Linear(128, 10)
             )
@@ -78,18 +80,42 @@ class MNISTmodel(nn.Module):
             assert False, "please insert `model_type` = `dnn` or `cnn`"
         return layers
     
+    def return_indices(self, on=True):
+        if on:
+            for layer in self.layers:
+                if isinstance(layer, nn.MaxPool2d):
+                    layer.return_indices = True
+        else:
+            for layer in self.layers:
+                if isinstance(layer, nn.MaxPool2d):
+                    layer.return_indices = False
+    
     def save_activation_maps(self, layer, typ, idx, x):
         if isinstance(layer, typ):
-            layer_name = f"({idx}) {str(layer).split('(')[0]}"
-            
+            layer_name = f"({idx-1}) {str(self.layers[idx-1]).split('(')[0]}"
             self.activation_maps[layer_name] = x
     
-    def forward(self, x, store=False):
+    def forward(self, x, store=False, switch=False):
         """
         store: if True, save activation maps
+        switch: get max pool indices
         """
-        for idx, layer in enumerate(self.layers):
-            x = layer(x)
-            if store:
-                self.save_activation_maps(layer, self.activation_func, idx, x)
-        return x
+        if switch:
+            switches = OrderDict()
+            self.return_indices(on=True)
+            for idx, layer in enumerate(self.layers):
+                if isinstance(layer, nn.MaxPool2d):
+                    x, indices = layer(x)
+                    switches[idx] = indices
+                else:
+                    x = layer(x)
+                if store:
+                    self.save_activation_maps(layer, self.activation_func, idx, x)
+            self.return_indices(on=False)
+            return x, switches
+        else:
+            for idx, layer in enumerate(self.layers):
+                x = layer(x)
+                if store:
+                    self.save_activation_maps(layer, self.activation_func, idx, x)
+            return x
