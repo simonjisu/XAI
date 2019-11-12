@@ -10,25 +10,18 @@ import torch
 import torch.nn as nn
 from collections import OrderedDict
 from copy import deepcopy
-from layers import relLinear, relConv2d, relMaxPool2d, relReLU
+from .layers import relLinear, relConv2d, relMaxPool2d, relReLU
 
 class lrpMNIST(nn.Module):
     """lrpMNIST"""
-    def __init__(self, model, load_path=None):
-        """
-        do not load model parameters first
-        """
+    def __init__(self, model):
         super(lrpMNIST, self).__init__()
-        assert load_path, "insert `load_path` model"
-
         # lrp
         self.activation_func = model.activation_func
         self.model_type = model.model_type
         self.activation_type = model.activation_type
         
-        self.model = deepcopy(model)
-        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
-        self.layers = self.lrp_make_layers(self.model)
+        self.layers = self.lrp_make_layers(model)
         
         self.activation_maps = OrderedDict()
         
@@ -58,7 +51,7 @@ class lrpMNIST(nn.Module):
             layer_name = f"({idx}) {str(layer).split('(')[0]}"
             self.activation_maps[layer_name] = x
     
-    def relprop(self, x, store=False, use_rho=False):
+    def get_attribution(self, x, target=None, store=False, use_rho=False):
         """
         store: if True, save activation maps
         """
@@ -68,4 +61,4 @@ class lrpMNIST(nn.Module):
             r = layer.relprop(r, use_rho)
             if store:
                 self.save_activation_maps(layer, relConv2d, idx, r)
-        return r
+        return r.detach()

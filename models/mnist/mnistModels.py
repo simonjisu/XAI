@@ -49,7 +49,8 @@ class MNISTmodel(nn.Module):
                     "softplus": nn.Softplus}
         
         self.layers = self.make_layers(model_type, activation_type)
-
+        
+    def reset_activation_maps(self):
         self.activation_maps = OrderedDict()
         
     def make_layers(self, model_type, activation_type):
@@ -92,30 +93,43 @@ class MNISTmodel(nn.Module):
     
     def save_activation_maps(self, layer, typ, idx, x):
         if isinstance(layer, typ):
-            layer_name = f"({idx-1}) {str(self.layers[idx-1]).split('(')[0]}"
-            self.activation_maps[layer_name] = x
+            if typ == self.activation_func:
+                layer_name = f"({idx}) {str(self.layers[idx-1]).split('(')[0]}>{self.activation_type}"
+            else:
+                layer_name = f"({idx}) Conv2d>{self.activation_type}>MaxPool2d"
+            self.activation_maps[layer_name] = x.detach()
     
-    def forward(self, x, store=False, switch=False):
+    def forward(self, x, store=False):
         """
         store: if True, save activation maps
-        switch: get max pool indices
         """
-        if switch:
-            switches = OrderDict()
-            self.return_indices(on=True)
-            for idx, layer in enumerate(self.layers):
-                if isinstance(layer, nn.MaxPool2d):
-                    x, indices = layer(x)
-                    switches[idx] = indices
-                else:
-                    x = layer(x)
+        self.reset_activation_maps()
+        for idx, layer in enumerate(self.layers):
+            x = layer(x)
+            if store:
+                self.save_activation_maps(layer, self.activation_func, idx, x)
+        return x
+    
+    def forward_switches(self, x, store=False):
+        """
+        get max pool indices & store activation maps
+        
+        output: 
+            - convs output before reshape to fc
+            - switches
+        """
+        switches = OrderedDict()
+        self.reset_activation_maps()
+        self.return_indices(on=True)
+        for idx, layer in enumerate(self.layers):
+            if isinstance(layer, nn.MaxPool2d):
+                x, indices = layer(x)
+                switches[idx] = indices
                 if store:
-                    self.save_activation_maps(layer, self.activation_func, idx, x)
-            self.return_indices(on=False)
-            return x, switches
-        else:
-            for idx, layer in enumerate(self.layers):
+                    self.save_activation_maps(layer, nn.MaxPool2d, idx, x)
+            elif isinstance(layer, Reshape):
+                break
+            else:
                 x = layer(x)
-                if store:
-                    self.save_activation_maps(layer, self.activation_func, idx, x)
-            return x
+        self.return_indices(on=False)
+        return x, switches

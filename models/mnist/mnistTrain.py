@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
-from MnistModels import MNISTmodel
+from mnistModels import MNISTmodel
 
 def build_dataset(root, batch_size, download=False):
     train_dataset = datasets.MNIST(
@@ -56,7 +56,7 @@ def train(model, train_loader, optimizer, loss_function, logterm, device):
                 
     return train_loss
 
-def test(model, test_loader, loss_function, device):
+def test(model, test_loader, device):
     model.eval()
     test_loss = 0
     correct = 0
@@ -79,7 +79,7 @@ def main_train(model, train_loader, test_loader, n_step, logterm, sv_path, devic
     best_acc = 0.0
     for step in range(n_step):
         train_loss = train(model, train_loader, optimizer, loss_function, logterm, device)
-        test_loss, test_acc = test(model, test_loader, loss_function, device)
+        test_loss, test_acc = test(model, test_loader, device)
         print(f"[Step] {step+1}/{n_step}")
         print(f"[Train] Average loss: {train_loss:.4f}")
         print(f"[Test] Average loss: {test_loss:.4f}, Accuracy: {test_acc:.2f}%")
@@ -94,7 +94,7 @@ def main(model_types, activation_types, **kwargs):
     root = kwargs["root"]
     project_path = kwargs["project_path"]
     logterm = kwargs["logterm"]
-    paper_num = kwargs["paper_num"]
+    record_name = kwargs["record_name"]
     sv_folder = kwargs["sv_folder"]
     n_step = kwargs["n_step"]
     batch_size = kwargs["batch_size"]
@@ -105,7 +105,7 @@ def main(model_types, activation_types, **kwargs):
     sv_main_path = project_path/sv_folder
     if not sv_main_path.exists():
         sv_main_path.mkdir()
-    record_path = project_path/"trainlog"/f"{paper_num}-record.txt"
+    record_path = project_path/"trainlog"/f"{record_name}-record.txt"
     if not record_path.exists():
         record_path.touch()
     with record_path.open(mode="w", encoding="utf-8") as f:
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         root = str(Path().home()/"code"/"data"),
         project_path = Path().home()/"code"/"XAI",
         logterm = False, 
-        paper_num = "no1",
+        record_name = "no1",
         sv_folder = "trained/mnist", 
         n_step = 20,
         batch_size = 128,

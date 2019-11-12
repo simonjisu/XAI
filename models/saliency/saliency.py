@@ -3,23 +3,21 @@ import torch.nn as nn
 from copy import deepcopy
 
 class saliencyMNIST(nn.Module):
-    def __init__(self, model, load_path=None):
+    def __init__(self, model):
         """
         do not load model parameters first
         """
         super(saliencyMNIST, self).__init__()
-        assert load_path, "insert `load_path` model"        
         
         # vanilla saliency
         self.activation_func = model.activation_func
         self.model_type = model.model_type
         self.activation_type = model.activation_type
 
-        self.model = deepcopy(model)
-        self.model.load_state_dict(torch.load(load_path, map_location="cpu"))
+        self.model = model
         self.model.eval()
         
-    def generate_saliency(self, x, target):
+    def get_attribution(self, x, target):
         """vanilla gradient*input"""
         x.requires_grad_(requires_grad=True)
         self.model.zero_grad()
