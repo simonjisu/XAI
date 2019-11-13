@@ -126,7 +126,7 @@ def estimate(attr_model, del_p, train_dataset, test_dataset, masks_dict, batch_s
         train_targets = train_dataset.targets
         test_datas = test_dataset.data.float().unsqueeze(1)
         test_targets = test_dataset.targets
-    _, C, H, W = train_data.size()
+    _, C, H, W = train_datas.size()
 
     # del_idx: decide how many pixels to delete
     del_idx = int(del_p * H * W)

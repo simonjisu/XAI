@@ -14,7 +14,7 @@ class saliencyMNIST(nn.Module):
         self.model_type = model.model_type
         self.activation_type = model.activation_type
 
-        self.model = model
+        self.model = model.cpu()
         self.model.eval()
         
     def get_attribution(self, x, target):
