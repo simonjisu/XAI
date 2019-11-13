@@ -9,11 +9,10 @@ from reshape import Reshape
 import torch
 import torch.nn as nn
 from collections import OrderedDict
-from copy import deepcopy
 from .layers import relLinear, relConv2d, relMaxPool2d, relReLU
 
-class lrpMNIST(nn.Module):
-    """lrpMNIST"""
+class LRP(nn.Module):
+    """LRP"""
     def __init__(self, model):
         super(lrpMNIST, self).__init__()
         # lrp

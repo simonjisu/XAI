@@ -10,12 +10,11 @@ from reshape import Reshape
 import torch
 import torch.nn as nn
 from collections import OrderedDict
-from copy import deepcopy
 
-class deconvMNIST(nn.Module):
-    """deconvMNIST"""
+class DeconvNet(nn.Module):
+    """DeconvNet"""
     def __init__(self, model):
-        super(deconvMNIST, self).__init__()
+        super(DeconvNet, self).__init__()
         # deconv
         self.activation_func = model.activation_func
         self.model_type = model.model_type
