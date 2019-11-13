@@ -15,7 +15,7 @@ class VanillaGrad(nn.Module):
         self.model.eval()
         
     def get_attribution(self, x, target):
-        """vanilla gradient*input"""
+        """vanilla gradient"""
         x.requires_grad_(requires_grad=True)
         self.model.zero_grad()
         o = self.model(x)
@@ -28,7 +28,7 @@ class VanillaGrad(nn.Module):
 
 class GradInput(nn.Module):
     def __init__(self, model):
-        super(VanillaGrad, self).__init__()
+        super(GradInput, self).__init__()
         
         # vanilla saliency
         self.activation_func = model.activation_func

@@ -14,7 +14,7 @@ from .layers import relLinear, relConv2d, relMaxPool2d, relReLU
 class LRP(nn.Module):
     """LRP"""
     def __init__(self, model):
-        super(lrpMNIST, self).__init__()
+        super(LRP, self).__init__()
         # lrp
         self.activation_func = model.activation_func
         self.model_type = model.model_type

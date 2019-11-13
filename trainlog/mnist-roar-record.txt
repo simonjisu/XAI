@@ -1,0 +1,22 @@
+| model_type | activation_type | attr_type | delete_percentages | best_acc |
+|--|--|--|--|--|
+|cnn|relu|lrp|0.0|99.13%|
+|cnn|relu|lrp|0.1|59.33%|
+|cnn|relu|lrp|0.2|61.38%|
+|cnn|relu|lrp|0.3|61.86%|
+|cnn|relu|lrp|0.4|62.28%|
+|cnn|relu|lrp|0.5|62.20%|
+|cnn|relu|lrp|0.6|51.18%|
+|cnn|relu|lrp|0.7|21.99%|
+|cnn|relu|lrp|0.8|11.36%|
+|cnn|relu|lrp|0.9|11.35%|
+|cnn|relu|gradinput|0.0|99.12%|
+|cnn|relu|gradinput|0.1|59.88%|
+|cnn|relu|gradinput|0.2|61.04%|
+|cnn|relu|gradinput|0.3|61.89%|
+|cnn|relu|gradinput|0.4|62.13%|
+|cnn|relu|gradinput|0.5|61.63%|
+|cnn|relu|gradinput|0.6|56.40%|
+|cnn|relu|gradinput|0.7|23.49%|
+|cnn|relu|gradinput|0.8|11.35%|
+|cnn|relu|gradinput|0.9|11.35%|
