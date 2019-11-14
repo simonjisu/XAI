@@ -56,7 +56,7 @@ def train(model, train_loader, optimizer, loss_function, logterm, device):
                 
     return train_loss
 
-def test(model, test_loader, device):
+def test(model, test_loader, device, save_corrects=False):
     model.eval()
     test_loss = 0
     correct = 0

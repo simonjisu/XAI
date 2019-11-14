@@ -36,8 +36,8 @@ def estimate(attr_model, del_p, train_dataset, test_dataset, masks_dict, batch_s
         _, indices = outputs.view(datas.size(0), -1).sort(-1)
         return indices
 
-    def calculate_masks(indices, del_idx, C, H, W):
-        return indices.le(del_idx).view(-1, C, H, W).byte()
+    def calculate_masks(masks, indices, del_idx, C, H, W):
+        return (masks+indices.le(del_idx).view(-1, C, H, W)).ge(1).byte()
     
     if train_dataset.data.ndimension() == 3:
         train_datas = train_dataset.data.float().unsqueeze(1)
@@ -53,10 +53,10 @@ def estimate(attr_model, del_p, train_dataset, test_dataset, masks_dict, batch_s
     test_indices = get_argmax_indices(test_datas, test_targets, attr_model)
     
     # rebuild dataset
-    masks_dict["train"][del_p] = calculate_masks(train_indices, del_idx, C, H, W)
+    masks_dict["train"][del_p] = calculate_masks(masks_dict["train"][del_p], train_indices, del_idx, C, H, W)
     train_dataset.data = (train_datas * masks_dict["train"][del_p].eq(0)).squeeze()
     
-    masks_dict["test"][del_p] = calculate_masks(test_indices, del_idx, C, H, W)
+    masks_dict["test"][del_p] = calculate_masks(masks_dict["test"][del_p], test_indices, del_idx, C, H, W)
     test_dataset.data = (test_datas * masks_dict["test"][del_p].eq(0)).squeeze()
     
     train_loader = torch.utils.data.DataLoader(
@@ -93,7 +93,6 @@ def main(model_types, activation_types, attr_types, **kwargs):
         f.write("| model_type | activation_type | attr_type | delete_percentages | best_acc |\n")
         f.write("|--|--|--|--|--|\n")
     
-    
     # mnist dataset delete idx
     delete_percentages = torch.arange(0, 1, 0.1)
     torch.manual_seed(seed)
@@ -103,24 +102,21 @@ def main(model_types, activation_types, attr_types, **kwargs):
         for activation_type in activation_types:
             print(f"[Alert] Training {model_type}-{activation_type} manual_seed={seed}")
             for attr_type in attr_types:
-                # build dataset
+                # build datasets
                 train_dataset, test_dataset, train_loader, test_loader = build_dataset(root, batch_size, download)
                 masks_dict = {"train": OrderedDict(), "test": OrderedDict()}
                 # start training from delete percentage 0.0 ~ 0.9
                 for del_p in delete_percentages:
-                    
                     del_p = round(del_p.item(), 2)
                     sv_attr_path = sv_main_path/"roar"/f"{attr_type}"
                     if not sv_attr_path.exists():
-                        sv_attr_path.mkdir(parents=True)
+                        sv_attr_path.mkdir()
                     sv_path = sv_attr_path/f"{del_p}-{model_type}-{activation_type}.pt"
 
                     print(f"[Alert] Attribution type: {attr_type} / Deletion of inputs: {del_p}")
                     if del_p != 0.0:
-                        # reload dataset
-                        train_dataset, test_dataset, train_loader, test_loader = build_dataset(root, batch_size, download)
-                        masks_dict["train"][del_p] = None
-                        masks_dict["test"][del_p] = None
+                        masks_dict["train"][del_p] = masks_dict["train"][prev_del_p]
+                        masks_dict["test"][del_p] = masks_dict["test"][prev_del_p]
                         
                         # create model(loaded), attr_model
                         model, attr_model = create_attr_model(attr_type, model_type, activation_type, load_path, device)
@@ -133,13 +129,12 @@ def main(model_types, activation_types, attr_types, **kwargs):
                         model = MNISTmodel(model_type, activation_type)
                         masks_dict["train"][del_p] = torch.zeros_like(train_dataset.data.unsqueeze(1))
                         masks_dict["test"][del_p] = torch.zeros_like(test_dataset.data.unsqueeze(1))
-                        load_path = sv_path
+
                     # start to train model
                     model = model.to(device)
                     best_acc = main_train(model, train_loader, test_loader, n_step, logterm, str(sv_path), device)
-                    
-                    # prev_del_p = del_p
-                    
+                    load_path = sv_path
+                    prev_del_p = del_p
                     # record best model accruacy automatically
                     with record_path.open(mode="a", encoding="utf-8") as f:
                         f.write(f"|{model_type}|{activation_type}|{attr_type}|{del_p}|{best_acc:.2f}%|\n")
