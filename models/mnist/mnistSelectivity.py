@@ -29,15 +29,19 @@ def create_attr_model(attr_type, model_type, activation_type, load_path, device)
     return model, attr_model
 
 
-def estimate(attr_model, del_p, train_dataset, test_dataset, masks_dict, batch_size):
+def estimate(attr_model, sel_step, test_dataset, indices_dict, batch_size):
     
-    def get_argmax_indices(datas, targets, attr_model):
+    def get_max_indices(datas, targets, attr_model):
         outputs = attr_model.get_attribution(datas, targets)
-        _, indices = outputs.view(datas.size(0), -1).sort(-1)
-        return indices
+        B, C, H, W = outputs.size()
+        argmax_v = outputs.view(B, C, -1).argmax(-1)
+        row_max = argmax_v // W
+        col_max = argmax_v % W
+        max_indices = torch.cat([row_max, col_max], dim=-1)
+        return max_indices
 
     def calculate_masks(masks, indices, del_idx, C, H, W):
-        return (masks+indices.le(del_idx).view(-1, C, H, W)).ge(1).byte()
+        return (masks+indices.eq(del_idx).view(-1, C, H, W)).ge(1).byte()
     
     if train_dataset.data.ndimension() == 3:
         train_datas = train_dataset.data.float().unsqueeze(1)
@@ -49,7 +53,7 @@ def estimate(attr_model, del_p, train_dataset, test_dataset, masks_dict, batch_s
     # del_idx: decide how many pixels to delete
     del_idx = int(del_p * H * W)
     
-    train_indices = get_argmax_indices(train_datas, train_targets, attr_model)
+    max_indices = get_argmax_indices(test_datas, train_targets, attr_model)
     test_indices = get_argmax_indices(test_datas, test_targets, attr_model)
     
     # rebuild dataset
@@ -82,7 +86,9 @@ def main(model_types, activation_types, attr_types, **kwargs):
     download = kwargs["download"]
     device = kwargs["device"]
     seed = kwargs["seed"]
-    
+    # selectivity
+    select_n_step = kwargs["select_n_step"]
+
     sv_main_path = project_path/sv_folder
     if not sv_main_path.exists():
         sv_main_path.mkdir()
@@ -90,11 +96,10 @@ def main(model_types, activation_types, attr_types, **kwargs):
     if not record_path.exists():
         record_path.touch()
     with record_path.open(mode="w", encoding="utf-8") as f:
-        f.write("| model_type | activation_type | attr_type | delete_percentages | best_acc |\n")
+        f.write("| model_type | activation_type | attr_type | select_step | best_acc |\n")
         f.write("|--|--|--|--|--|\n")
     
     # mnist dataset delete idx
-    delete_percentages = torch.arange(0, 1, 0.1)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     # start
@@ -103,22 +108,23 @@ def main(model_types, activation_types, attr_types, **kwargs):
             print(f"[Alert] Training {model_type}-{activation_type} manual_seed={seed}")
             for attr_type in attr_types:
                 # build datasets
-                train_dataset, test_dataset, train_loader, test_loader = build_dataset(root, batch_size, download)
-                masks_dict = {"train": OrderedDict(), "test": OrderedDict()}
-                # start training from delete percentage 0.0 ~ 0.9
-                for del_p in delete_percentages:
-                    del_p = round(del_p.item(), 2)
-                    sv_attr_path = sv_main_path/"roar"/f"{attr_type}"
-                    if not sv_attr_path.exists():
-                        sv_attr_path.mkdir()
-                    sv_path = sv_attr_path/f"{del_p}-{model_type}-{activation_type}.pt"
+                _, test_dataset, _, test_loader = build_dataset(root, batch_size, download)
+                # setting load_path
+                load_path = sv_main_path/f"{model_type}-{activation_type}.pt"
+                # create model(loaded), attr_model
+                model, attr_model = create_attr_model(attr_type, model_type, activation_type, load_path, device)
+                indices_dict = OrderedDict()
+                # start training from select_n_step
+                for sel_step in range(select_n_step):
 
-                    print(f"[Alert] Attribution type: {attr_type} / Deletion of inputs: {del_p}")
+                    print(f"[Alert] Attribution type: {attr_type} / Selection Step: {sel_step+1}")
+                    indices_dict[sel_step]
+                    # delete below
                     if del_p != 0.0:
                         masks_dict["train"][del_p] = masks_dict["train"][prev_del_p]
                         masks_dict["test"][del_p] = masks_dict["test"][prev_del_p]
                         
-                        # create model(loaded), attr_model
+                        # create attr_model
                         model, attr_model = create_attr_model(attr_type, model_type, activation_type, load_path, device)
                         
                         # estimate and rebuild dataset
@@ -147,13 +153,14 @@ if __name__ == "__main__":
         root = str(Path().home()/"code"/"data"),
         project_path = Path().home()/"code"/"XAI",
         logterm = False, 
-        record_name = "mnist-roar",
+        record_name = "mnist-selectivity",
         sv_folder = "trained/mnist", 
         n_step = 10,
         batch_size = 512,
         download = False,
         device = "cuda" if torch.cuda.is_available() else "cpu",
-        seed = 73
+        seed = 73, 
+        select_n_step = 50
     )
     
 #     activation_types = ["relu", "tanh", "sigmoid", "softplus"]
