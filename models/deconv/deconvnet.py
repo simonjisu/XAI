@@ -22,6 +22,7 @@ class DeconvNet(nn.Module):
         
         self.layers = self.deconv_make_layers(model)
         
+    def reset_activation_maps(self):
         self.activation_maps = OrderedDict()
         
     def deconv_make_layers(self, model):
@@ -87,6 +88,7 @@ class DeconvNet(nn.Module):
         switches: from MNISTmodel forward method "forward_switches"
         store: if True, save activation maps
         """
+        self.reset_activation_maps()
         assert (deconv_layer_num <= self.deconv_module_len) or (deconv_layer_num==None), \
             "`deconv_layer_num` should <= `self.deconv_module_len` or == None"
         if deconv_layer_num == None: deconv_layer_num = 1

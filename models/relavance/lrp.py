@@ -22,8 +22,9 @@ class LRP(nn.Module):
         
         self.layers = self.lrp_make_layers(model)
         
+    def reset_activation_maps(self):
         self.activation_maps = OrderedDict()
-        
+
     def lrp_make_layers(self, model):
         layers = []
         mapping_dict = {nn.Linear: relLinear, nn.Conv2d: relConv2d, nn.MaxPool2d: relMaxPool2d, 
@@ -41,6 +42,7 @@ class LRP(nn.Module):
         lrp method
         must run forward first to save input and output at each layer
         """
+        self.reset_activation_maps()
         for layer in self.layers:
             x = layer(x)
         return x
