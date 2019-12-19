@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 from reshape import Reshape
-
+from xaimodules import XaiBase
 import torch
 import torch.nn as nn
 from collections import OrderedDict
@@ -133,3 +133,51 @@ class MNISTmodel(nn.Module):
                 x = layer(x)
         self.return_indices(on=False)
         return x, switches
+
+
+class CnnWithCBAM(XaiBase):
+    def __init__(self, activation_type):
+        """
+        activation_type: "relu", "tanh", "sigmoid", "softplus"
+        """
+        super(CnnModelWithCBAM, self).__init__()
+        act = {"relu": nn.ReLU, 
+               "tanh": nn.Tanh, 
+               "sigmoid": nn.Sigmoid, 
+               "softplus": nn.Softplus}
+        self.activation_func = act[activation_type]
+        
+        self.convs = nn.Sequential(
+            nn.Conv2d(1, 32, 5),  # (B, 1, 32, 32) > (B, 32, 28, 28)
+            CBAM(32, 28, 28, 16),
+            self.activation_func(),
+            nn.MaxPool2d(2),  # (B, 32, 28, 28) > (B, 32, 14, 14)
+            nn.Conv2d(32, 64, 3),  # (B, 32, 14, 14) > (B, 64, 12, 12)
+            CBAM(64, 12, 12, 16),
+            self.activation_func(), 
+            nn.MaxPool2d(2),  # (B, 64, 12, 12) > (B, 64, 6, 6)
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(64*6*6, 128),
+            self.activation_func(),
+            nn.Linear(128, 10)
+        )
+        
+    def forward(self, x):        
+        x = self.convs(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+    
+    def get_attribution(self, x, return_attn=True):
+        self._reset_maps()
+        for i, layer in enumerate(self.convs):
+            layer_name = type(layer).__name__
+            if layer_name == "CBAM":
+                x, attns = layer(x, return_attn)
+                self._save_maps(f"{i}"+layer_name, attns)
+            else:
+                x = layer(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
