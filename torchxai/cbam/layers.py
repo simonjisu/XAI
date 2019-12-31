@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 class ChannelAttention(nn.Module):
     """Channel Attention Module"""
-    def __init__(self, C, H, W, ratio):
+    def __init__(self, C, ratio):
         """
         Method in [arXiv:1807.06521]
         args:
@@ -18,9 +18,9 @@ class ChannelAttention(nn.Module):
          - ratio: reduction ratio
         """
         super(ChannelAttention, self).__init__()
-        kernel_size = (H, W)
-        self.maxpool = nn.MaxPool2d(kernel_size)
-        self.avgpool = nn.AvgPool2d(kernel_size)
+        assert isinstance(2*C // ratio, int), "`2*C // ratio` must be int "
+        self.maxpool = nn.AdaptiveMaxPool2d((1, 1))
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.shallow_net = nn.Sequential(
             nn.Linear(2*C, 2*C // ratio),
             nn.ReLU(),
@@ -95,7 +95,7 @@ class CBAM(nn.Module):
          - attentioned features, size = (B, C, H, W)
         """
         super(CBAM, self).__init__()
-        self.channel_attn = ChannelAttention(C, H, W, ratio)
+        self.channel_attn = ChannelAttention(C, ratio)
         self.spatial_attn = SpatialAttention(H, W, K_H, K_W, S_H, S_W)
         
     def forward(self, x, return_attn=False):
