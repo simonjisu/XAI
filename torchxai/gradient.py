@@ -1,14 +1,49 @@
 import torch
 import torch.nn as nn
-from ..base import XaiModel, XaiHook
+from .base import XaiModel
 
-class GuidedBackprop(XaiModel):
-    """GuidedBackprop"""
+class VanillaGrad(XaiModel):
+    """VanillaGrad"""
+    def __init__(self, model):
+        super(VanillaGrad, self).__init__(model)
+        
+    def get_attribution(self, x, target):
+        """vanilla gradient"""
+        x.requires_grad_(requires_grad=True)
+        self.model.zero_grad()
+        output = self.model(x)
+        grad = self._one_hot(targets, module_name="fc")
+        output.backward(grad)
+        x_grad = x.grad.data.clone()
+        x.requires_grad_(requires_grad=False)
+        return x_grad
+
+
+class InputGrad(XaiModel):
+    """InputGrad"""
+    def __init__(self, model):
+        super(InputGrad, self).__init__(model)
+        
+    def get_attribution(self, x, target):
+        """vanilla gradient*input"""
+        x.requires_grad_(requires_grad=True)
+        self.model.zero_grad()
+        output = self.model(x)
+        grad = self._one_hot(targets, module_name="fc")
+        output.backward(grad)
+        x_grad = x.grad.data.clone()
+        x.requires_grad_(requires_grad=False)
+        
+        return x_grad * x.data
+
+
+class GuidedGrad(XaiModel):
+    """GuidedGrad"""
     def __init__(self, model):
         """
         applied at relu function
         """
-        super(GuidedBackprop, self).__init__(model)
+        super(GuidedGrad, self).__init__(model)
         self.register_guided_hooks(self.model.convs)
     
     def reset_f_outputs(self):

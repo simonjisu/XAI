@@ -87,6 +87,15 @@ class XaiBase(nn.Module):
         """
         self._reset_maps()
     
+    def _get_layer_name(self, layer, lower=True):
+        """
+        returns the name of a class
+        """
+        name = type(layer).__name__
+        if not lower:
+            return name
+        return name.lower()
+
     def _reset_maps(self):
         self.maps = OrderedDict()
         

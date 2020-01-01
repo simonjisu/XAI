@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ..base import XaiModel, XaiHook
+from .base import XaiModel, XaiHook
 
 class GradCAM(XaiModel):
     """GradCAM"""
@@ -33,7 +33,7 @@ class GradCAM(XaiModel):
     
     def cal_gradcam(self):
         # (B, C, H, W) > (B, C, 1, 1)
-        alpha = self.global_avgpool(self.b_hook.i[0])
+        alpha = self.global_avgpool(self.b_hook.o[0])
         # sum( (B, C, 1, 1) * (B, C, H, W) , dim=1) > (B, 1, H, W)
         gradcam = torch.relu((alpha * self.f_hook.o).sum(1, keepdim=True))
         return gradcam
@@ -70,11 +70,13 @@ class GradCAM(XaiModel):
         *_, H, W = x.size()
         self.model.zero_grad()
         
-        output = self.model(x)
+        outputs = self.model(x)
         grad = self._one_hot(targets, module_name="fc")
-        output.backward(grad)
+        outputs.backward(grad)
         
-        gradcam = self.cal_gradcam()
-        gradcam = self.post_processing(gradcam, H, W)
+        cams = self.cal_gradcam()
+        cams = self.post_processing(cams, H, W)
         
-        return gradcam.detach()
+        return cams.detach()
+
+

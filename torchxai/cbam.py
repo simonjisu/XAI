@@ -2,7 +2,6 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from collections import OrderedDict
 
 
 class ChannelAttention(nn.Module):
