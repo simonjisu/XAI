@@ -1,13 +1,15 @@
+__author__ = "simonjisu"
+
 import torch
 import torch.nn as nn
-from .base import XaiModel
+from .base import XaiModel, XaiHook
 
 class VanillaGrad(XaiModel):
     """VanillaGrad"""
     def __init__(self, model):
         super(VanillaGrad, self).__init__(model)
         
-    def get_attribution(self, x, target):
+    def get_attribution(self, x, targets):
         """vanilla gradient"""
         x.requires_grad_(requires_grad=True)
         self.model.zero_grad()
@@ -24,7 +26,7 @@ class InputGrad(XaiModel):
     def __init__(self, model):
         super(InputGrad, self).__init__(model)
         
-    def get_attribution(self, x, target):
+    def get_attribution(self, x, targets):
         """vanilla gradient*input"""
         x.requires_grad_(requires_grad=True)
         self.model.zero_grad()

@@ -325,7 +325,6 @@ class LRP(XaiModel):
         module_names: have to be sequential to forward network 
         """
         super(LRP, self).__init__(model)
-        self.module_names = module_names
         self.use_rho = use_rho
         self.available_module = {
             nn.Linear: relLinear, 

@@ -32,7 +32,10 @@ def argument_parsing(preparse=False):
                    help="Model Type: cnn, cnnwithcbam. \
                         Insert at least one method, some attribution method will not be supported to some models. \
                         example:`-mt cnn cnnwithcbam`")
-
+    # attribution details
+    parser.add_argument("-rcd", "-reduce_color_dim", type=str,
+                   help="Reduce the color channel of dimension in the attribution maps by following methods.\
+                        Methods: rec601, itu-r_bt.707, itu0r_bt.2100")
     # training
     parser.add_argument("-down","--download", action="store_true",
                    help="Whether to download the data")
