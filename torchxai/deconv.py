@@ -2,7 +2,8 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from collections import OrderedDict
+from .base import XaiModel
+from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
     """DeconvNet"""
@@ -18,7 +19,7 @@ class DeconvNet(XaiModel):
         """
         args:
         - module_name
-        - layer_names: 
+        - layer_names
         
         return:
         get `deconvs_indices` for the `module_name`, 
@@ -71,7 +72,7 @@ class DeconvNet(XaiModel):
         conv_indices = self.deconvs_indices[layer_name]
         conv_bias_indices = self.deconvs_indices[layer_name+"-bias"]
         for i, layer in enumerate(convs):
-            if type(layer).__name__.lower() == layer_name:
+            if self._get_layer_name(layer) == layer_name:
                 # ex: 3 conv layers (conv, relu, maxpool)
                 # 'conv2d': {0: 8, 3: 5, 6: 2}
                 # 'conv2d-bias': {0: 5, 3: 2, 6: None}
@@ -107,7 +108,7 @@ class DeconvNet(XaiModel):
                 x = layer(x, switches[j])
             elif isinstance(layer, nn.ConvTranspose2d):
                 x = layer(x)
-                layer_name = type(layer).__name__.lower() + f"-{i}"
+                layer_name = self._get_layer_name(layer) + f"-{i}"
                 self._save_maps(layer_name, x.data)
             else:
                 x = layer(x)

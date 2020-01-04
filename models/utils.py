@@ -1,8 +1,61 @@
+import argparse
 import torch
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.gridspec as gridspec
+
+
+def argument_parsing(preparse=False):
+    parser = argparse.ArgumentParser(description="Argparser",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    # Path Settings
+    parser.add_argument("-pp", "--prj_path", required=True,
+                   help="Project Path: Insert your project dir path")
+    parser.add_argument("-dp", "--data_path", required=True,
+                   help="Data Path: Insert your project dir path")
+    parser.add_argument("-rf", "--record_file", type=str, default="rc",
+                help="Record directory Path: just insert the folder name,\
+                    record all metrics to a table,\
+                    it will automatically create under `prj_path`/trainlog/`record_file`.txt")
+    # types
+    parser.add_argument("-dt", "--data_type", type=str, default="mnist",
+                   help="Dataset type: mnist, cifar10")
+    parser.add_argument("-et", "--eval_type", type=str, default="roar",
+                   help="Dataset type: roar, selectivity")
+    parser.add_argument("-at", "--attr_type", nargs="+", required=True,
+                   help="Attribution Method Type: deconv, gradcam, guidedgrad, relavance, vanillagrad, inputgrad, guided_gradcam. \
+                        Insert at least one method, some attribution method will not be supported to some models. \
+                        example:`-at deconv gradcam`")
+    parser.add_argument("-mt", "--model_type", nargs="+", required=True,
+                   help="Model Type: cnn, cnnwithcbam. \
+                        Insert at least one method, some attribution method will not be supported to some models. \
+                        example:`-mt cnn cnnwithcbam`")
+    # attribution details
+    parser.add_argument("-rcd", "-reduce_color_dim", type=str,
+                   help="Reduce the color channel of dimension in the attribution maps by following methods.\
+                        Methods: rec601, itu-r_bt.707, itu0r_bt.2100")
+    # training
+    parser.add_argument("-down","--download", action="store_true",
+                   help="Whether to download the data")
+    parser.add_argument("-bs","--batch_size", type=int, default=128,
+                   help="Mini batch size")
+    parser.add_argument("-ns","--n_step", type=int, default=10,
+                   help="Total training step size")
+    parser.add_argument("-cuda","--use_cuda", action="store_true",
+                   help="Use Cuda")
+    parser.add_argument("-sd","--seed", type=int, default=73,
+                   help="Seed number")
+    parser.add_argument("-vb","--verbose", type=int, default=0,
+                   help="Verbose")
+    
+    if preparse:
+        return parser
+    
+    args = parser.parse_args()
+    return args
+
 
 def build_img_dict(dataset):
     """

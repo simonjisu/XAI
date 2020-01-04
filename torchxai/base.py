@@ -87,6 +87,15 @@ class XaiBase(nn.Module):
         """
         self._reset_maps()
     
+    def _get_layer_name(self, layer, lower=True):
+        """
+        returns the name of a class
+        """
+        name = type(layer).__name__
+        if not lower:
+            return name
+        return name.lower()
+
     def _reset_maps(self):
         self.maps = OrderedDict()
         
@@ -145,14 +154,20 @@ class XaiBase(nn.Module):
                 if isinstance(layer, nn.MaxPool2d):
                     layer.return_indices = False  
                     
-                    
+
 class XaiModel(XaiBase):
     def __init__(self, model):
         super(XaiModel, self).__init__()
         self.model = deepcopy(model)
         self.model.cpu()
         self.model.eval()
-        
+    
+    def get_attribution(self, *args):
+        """
+        all XaiModel should have `get_attribution` method
+        """
+        raise NotImplementedError
+
     def _one_hot(self, targets, module_name):
         """
         one hot vectorize the target tensor for classification purpose.
