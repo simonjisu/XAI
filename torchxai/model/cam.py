@@ -3,7 +3,7 @@ __author__ = "simonjisu"
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .base import XaiModel, XaiHook
+from ..base import XaiModel, XaiHook
 
 class GradCAM(XaiModel):
     """GradCAM"""
@@ -18,6 +18,7 @@ class GradCAM(XaiModel):
         self.norm_mode = norm_mode
         self.global_avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
+        # TODO [RF] 0.1.2 features/layername
         relu_idxes = self._find_target_layer_idx(module_name="convs", layer_names=["relu"])
         self.last_relu_idx = relu_idxes["relu"][-1]
         # get Rectified Conv Features Maps

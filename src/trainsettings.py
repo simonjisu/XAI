@@ -1,4 +1,3 @@
-import argparse
 from tqdm import tqdm
 from pathlib import Path
 import torch
@@ -6,9 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torchxai import XaiTrainer
-from .mnist import cnn as mnistcnn
-# from .cifar10 import cnn as cifar10cnn
+from torchxai.trainer import XaiTrainer
+from .models.plaincnn import CnnMnist
+from .models.resnet import ResNetMnist, ResNetMnistCBAM
 from collections import OrderedDict
 
 
@@ -42,11 +41,12 @@ class ModelTranier(XaiTrainer):
         }
         self.model_dict = {
             "mnist": {
-                "cnn": mnistcnn.CnnModel,
-                "cnnwithcbam": mnistcnn.CnnModelWithCBAM
-            }
+                "cnn": CnnMnist,
+                "resnet": ResNetMnist,
+                "resnetcbam": ResNetMnistCBAM
+            },
             "cifar10": {
-                "cnn": None
+                "cnn": None,
                 "cnnwithcbam": None
             }
         }
@@ -232,13 +232,13 @@ class ModelTranier(XaiTrainer):
         previous_del_p = list(self.masks_dict[typ+"-mask"])[-1]
         self.masks_dict[typ+"-mask"][del_p] = all_masks + self.masks_dict[typ+"-mask"][previous_del_p]
 
-    def create_attr_model(self, model_class, attr_class, load_path):
+    def create_attr_model(self, model_class, attr_class, load_path, **kwargs):
         """
         recreate the model & load its weights. after this create an attribution model
         """
         model = model_class()
         model.load_state_dict(torch.load(load_path, map_location="cpu"))
-        attr_model = attr_class(model)
+        attr_model = attr_class(model, **kwargs)
         return model, attr_model
 
     def evaluation(self, args, attr_model, del_p):

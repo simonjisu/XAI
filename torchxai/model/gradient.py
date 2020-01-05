@@ -2,7 +2,7 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from .base import XaiModel, XaiHook
+from ..base import XaiModel, XaiHook
 
 class VanillaGrad(XaiModel):
     """VanillaGrad"""
@@ -56,6 +56,7 @@ class GuidedGrad(XaiModel):
         self.relu_b_hooks = []
         self.reset_f_outputs()
         for layer in layers:
+            # TODO [RF] 0.1.2 features/layername
             layer_name = type(layer).__name__
             if layer_name.lower() == "relu":
                 f_hook = XaiHook(layer)

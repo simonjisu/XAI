@@ -5,8 +5,8 @@ nohup python -u main.py \
     -rf cnn-roar \
     -dt mnist \
     -et roar \
-    -at vanillagrad inputgrad guidedgrad gradcam deconv relavance \
-    -mt cnn \
+    -at vanillagrad inputgrad gradcam \
+    -mt resnet resnetcbam \
     -down \
     -bs 256 \
     -ns 10 \

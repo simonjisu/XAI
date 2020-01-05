@@ -2,7 +2,7 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from .base import XaiModel, XaiHook
+from ..base import XaiModel, XaiHook
 
 class relLinear(XaiHook):
     """relLinear"""

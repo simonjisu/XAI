@@ -2,7 +2,7 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from .base import XaiModel
+from ..base import XaiModel
 from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
@@ -26,6 +26,7 @@ class DeconvNet(XaiModel):
         - key: decovnet layer name 
         - values: indices dict match to {convnet:decovnet}
         """
+        # TODO [RF] 0.1.2 features/layername
         convs_indices = self._find_target_layer_idx(module_name, layer_names)
         last_layer_num = len(self.model._modules[module_name]) - 1
         deconvs_indices = defaultdict(dict)
