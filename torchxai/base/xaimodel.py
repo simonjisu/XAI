@@ -52,7 +52,17 @@ class XaiModel(XaiBase):
         one_hot = torch.zeros((B, target_size))
         one_hot.scatter_(1, targets.unsqueeze(1), 1.0)
         return one_hot.to(targets.device)
-    
+
+    def _find_target_layer(self, layer_name):
+        """
+        return all layers that have "layer_name" in modules
+        """
+        all_layers = []
+        for name, layer in self.named_modules():
+            if layer_name in name:
+                all_layers.append(layer)
+        return all_layers
+
     def _find_target_layer_idx(self, module_name, layer_names):
         assert isinstance(layer_names, list) or isinstance(layer_names, tuple), "use list for `layer_names`"
         layer_names = [l.lower() for l in layer_names]

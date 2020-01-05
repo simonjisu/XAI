@@ -6,7 +6,7 @@ from ..base import XaiModel, XaiHook
 
 class VanillaGrad(XaiModel):
     """VanillaGrad"""
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         super(VanillaGrad, self).__init__(model)
         
     def get_attribution(self, x, targets):
@@ -23,7 +23,7 @@ class VanillaGrad(XaiModel):
 
 class InputGrad(XaiModel):
     """InputGrad"""
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         super(InputGrad, self).__init__(model)
         
     def get_attribution(self, x, targets):
@@ -41,31 +41,35 @@ class InputGrad(XaiModel):
 
 class GuidedGrad(XaiModel):
     """GuidedGrad"""
-    def __init__(self, model):
+    def __init__(self, model, module_name="convs", act=nn.ReLU, **kwargs):
         """
         applied at relu function
         """
         super(GuidedGrad, self).__init__(model)
-        self.register_guided_hooks(self.model.convs)
+        self.act = act
+        if not isinstance(module_name, list):
+            module_name = [module_name]
+        self.f_hooks = []
+        self.b_hooks = []
+        for n_name in module_name:
+            self.register_guided_hooks(self.model._modules[n_name])
     
     def reset_f_outputs(self):
         self.f_outputs = []
     
     def register_guided_hooks(self, layers):
-        self.relu_f_hooks = []
-        self.relu_b_hooks = []
+        if not isinstance(layers, nn.Sequential):
+            layers = [layers]
         self.reset_f_outputs()
         for layer in layers:
-            # TODO [RF] 0.1.2 features/layername
-            layer_name = type(layer).__name__
-            if layer_name.lower() == "relu":
+            if isinstance(layer, self.act):
                 f_hook = XaiHook(layer)
                 b_hook = XaiHook(layer)
-                self.relu_f_hooks.append(f_hook)
-                self.relu_b_hooks.append(b_hook)
+                self.f_hooks.append(f_hook)
+                self.b_hooks.append(b_hook)
                 
         def guided_forward(m, i, o):
-            self.f_outputs.append(o.data)  
+            self.f_outputs.append(o.data)
             
         def guided_backward(m, i, o):
             deconv_grad = o[0].clamp(min=0)  # o: backward input
@@ -75,8 +79,8 @@ class GuidedGrad(XaiModel):
             return (grad_in, )
         
         # register forward hooks
-        self._register_forward(self.relu_f_hooks, hook_fn=guided_forward)
-        self._register_backward(self.relu_b_hooks, hook_fn=guided_backward)
+        self._register_forward(self.f_hooks, hook_fn=guided_forward)
+        self._register_backward(self.b_hooks, hook_fn=guided_backward)
         
     def get_attribution(self, x, targets):
         x.requires_grad_(True)

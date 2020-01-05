@@ -9,7 +9,7 @@ import torch.nn as nn
 
 class CnnMnist(XaiBase):
     def __init__(self):
-        super(CnnModel, self).__init__()
+        super(CnnMnist, self).__init__()
         """
         CNN: 
         convs:

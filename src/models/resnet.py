@@ -31,6 +31,7 @@ class BasicBlock(nn.Module):
         self.conv1 = conv3x3(in_channels, out_channels, stride=stride)
         self.bn1 = norm_layer(out_channels)
         self.relu = nn.ReLU(inplace=True)
+        self.relu_last = nn.ReLU()  # Need to record for attribution method
         self.conv2 = conv1x1(out_channels, out_channels)
         self.bn2 = norm_layer(out_channels)
         self.downsample = downsample
@@ -58,7 +59,7 @@ class BasicBlock(nn.Module):
             identity = self.downsample(x)  
         
         o += identity
-        o = self.relu(o)
+        o = self.relu_last(o)
         return o
 
 
@@ -74,6 +75,7 @@ class CBAMBlock(nn.Module):
         self.cbam1 = xaimodule.CBAM(C=out_channels, ratio=16, kernel_size=7, stride=1)
         self.bn1 = norm_layer(out_channels)
         self.relu = nn.ReLU(inplace=True)
+        self.relu_last = nn.ReLU()  # Need to record for attribution method
         self.conv2 = conv1x1(out_channels, out_channels)
         self.cbam2 = xaimodule.CBAM(C=out_channels, ratio=16, kernel_size=7, stride=1)
         self.bn2 = norm_layer(out_channels)
@@ -104,15 +106,16 @@ class CBAMBlock(nn.Module):
             identity = self.downsample(x)  
         
         o += identity
-        o = self.relu(o)
+        o = self.relu_last(o)
         return o
 
 
 # ---Models---
 class ResNetSimple(XaiBase):
     """ResNetSimple"""
-    def __init__(self, block, layers, img_c=3, num_classes=1000, zero_init_residual=False, 
-                 norm_layer=None):
+    def __init__(self, block, layers, img_c=3, num_classes=1000, 
+                zero_init_residual=False, 
+                norm_layer=None):
         """
         Simple Version of ResNet in PyTorch
         modified some codes from the reference
@@ -125,12 +128,13 @@ class ResNetSimple(XaiBase):
         self._norm_layer = norm_layer
         
         self.in_c = 64
+        self.out_c_dict = {k: v for k, v in enumerate([64, 128, 256, 512])}
+
         self.conv1 = nn.Conv2d(img_c, self.in_c, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.in_c)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
-        self.out_c_dict = {k: v for k, v in enumerate([64, 128, 256, 512])}
         self.resnet_layers = self.make_layer(block, layers)
         
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -150,11 +154,8 @@ class ResNetSimple(XaiBase):
             for m in self.modules():
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
-                elif isinstance(m, BasicBlock):
+                elif isinstance(m, BasicBlock) or isinstance(m, CBAMBlock):
                     nn.init.constant_(m.bn2.weight, 0)
-
-        # --- Setting Hooks if exists CBAM ---
-        self.register_attention_hooks()
 
     def make_layer(self, block, layers):
         """
@@ -207,22 +208,6 @@ class ResNetSimple(XaiBase):
 
         return nn.Sequential(*layers)
 
-    def register_attention_hooks(self):
-        self.attn_hooks = OrderedDict()
-        for name, m in self.named_modules():
-            if isinstance(m, xaimodule.CBAM):
-                # each CBAMBlock contains 2 CBAM module
-                # if layers = [2, 2, 2], total CBAM module will be (2*2)*3
-                c_attn_hook = XaiHook(m.channel_attn)
-                s_attn_hook = XaiHook(m.spatial_attn)
-                self.attn_hooks[f"{name}-c_attn"] = c_attn_hook
-                self.attn_hooks[f"{name}-s_attn"] = s_attn_hook
-        self._register_forward(list(self.attn_hooks.values()))
-
-    def close(self):
-        """close all hooks"""
-        self._reset_hooks(list(self.attn_hooks.values()))
-
     def _forward_impl(self, x):
         x = self.conv1(x)  
         x = self.bn1(x)
@@ -240,8 +225,28 @@ class ResNetSimple(XaiBase):
     def forward(self, x):
         return self._forward_impl(x)
 
+    def register_attention_hooks(self):
+        self.attn_hooks = OrderedDict()
+        for name, m in self.named_modules():
+            if isinstance(m, xaimodule.CBAM):
+                # each CBAMBlock contains 2 CBAM module
+                # if layers = [2, 2, 2], total CBAM module will be (2*2)*3
+                c_attn_hook = XaiHook(m.channel_attn)
+                s_attn_hook = XaiHook(m.spatial_attn)
+                self.attn_hooks[f"{name}-c_attn"] = c_attn_hook
+                self.attn_hooks[f"{name}-s_attn"] = s_attn_hook
+        self._register_forward(list(self.attn_hooks.values()))
 
+    def close(self):
+        """close all hooks"""
+        self._reset_hooks(list(self.attn_hooks.values()))
 
+    def forward_map(self, x):
+        self.register_attention_hooks()
+        self._reset_maps()
+        o = self.forward(x)
+        return o
+        
 # create exists resnet
 from torchvision.models.utils import load_state_dict_from_url
 

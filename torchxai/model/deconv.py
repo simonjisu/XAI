@@ -7,7 +7,7 @@ from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
     """DeconvNet"""
-    def __init__(self, model, module_name="convs"):
+    def __init__(self, model, module_name="convs", **kwargs):
         super(DeconvNet, self).__init__(model)
         layer_names = ["conv2d", "maxpool2d"]
         self.module_name = module_name
@@ -26,7 +26,6 @@ class DeconvNet(XaiModel):
         - key: decovnet layer name 
         - values: indices dict match to {convnet:decovnet}
         """
-        # TODO [RF] 0.1.2 features/layername
         convs_indices = self._find_target_layer_idx(module_name, layer_names)
         last_layer_num = len(self.model._modules[module_name]) - 1
         deconvs_indices = defaultdict(dict)
