@@ -2,12 +2,12 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from .base import XaiModel
+from ..base import XaiModel
 from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
     """DeconvNet"""
-    def __init__(self, model, module_name="convs"):
+    def __init__(self, model, module_name="convs", **kwargs):
         super(DeconvNet, self).__init__(model)
         layer_names = ["conv2d", "maxpool2d"]
         self.module_name = module_name

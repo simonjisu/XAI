@@ -2,7 +2,7 @@ __author__ = "simonjisu"
 
 import torch
 import torch.nn as nn
-from .base import XaiModel, XaiHook
+from ..base import XaiModel, XaiHook
 
 class relLinear(XaiHook):
     """relLinear"""
@@ -320,7 +320,7 @@ class relMaxPool2d(XaiHook):
 
 class LRP(XaiModel):
     """LRP"""
-    def __init__(self, model, use_rho=False):
+    def __init__(self, model, use_rho=False, **kwargs):
         """
         module_names: have to be sequential to forward network 
         """

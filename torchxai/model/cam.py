@@ -3,33 +3,42 @@ __author__ = "simonjisu"
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .base import XaiModel, XaiHook
+from ..base import XaiModel, XaiHook
 
 class GradCAM(XaiModel):
     """GradCAM"""
-    def __init__(self, model, norm_mode=1):
+    def __init__(self, model, layers_name=None, norm_mode=1, **kwargs):
         """
-        norm mode
-        - 1 ( 0, 1) min-max normalization
-        - 2 (-1, 1) min-max normalization
-        - 3 mean-std normalization
+        args:
+        - layers_name
+        - norm mode
+            * 1 ( 0, 1) min-max normalization
+            * 2 (-1, 1) min-max normalization
+            * 3 mean-std normalization
         """
         super(GradCAM, self).__init__(model)
         self.norm_mode = norm_mode
         self.global_avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
-        relu_idxes = self._find_target_layer_idx(module_name="convs", layer_names=["relu"])
-        self.last_relu_idx = relu_idxes["relu"][-1]
-        # get Rectified Conv Features Maps
-        self.f_hook = XaiHook(self.model.convs[self.last_relu_idx])
-        self.b_hook = XaiHook(self.model.convs[self.last_relu_idx])
-        self.register_hooks()
-    
-    def register_hooks(self):
+        # TODO [RF] 0.1.2 features/layername
+        # not to use `self._find_target_layer_idx` for resnet because is too hard to use
+        if layers_name == None:
+            # only supported to cnn models which have `convs` layer + ReLU activation
+            target_idxes = self._find_target_layer_idx("convs", ["relu"])
+            last_target_idx = target_idxes["relu"][-1]
+            # get Rectified Conv Features Maps
+            self.f_hook = XaiHook(self.model._modules["convs"][last_target_idx])
+            self.b_hook = XaiHook(self.model._modules["convs"][last_target_idx])
+        else:
+            # always find last relu function 
+            all_layers = self._find_target_layer(layers_name)
+            self.f_hook = XaiHook(all_layers[-1])
+            self.b_hook = XaiHook(all_layers[-1])
+        
         self._register_forward(self.f_hook, hook_fn=None)
         self._register_backward(self.b_hook, hook_fn=None)
     
-    def reset_hooks(self):
+    def close(self):
         self.f_hook.close()
         self.b_hook.close()
     

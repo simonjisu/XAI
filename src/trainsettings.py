@@ -1,4 +1,3 @@
-import argparse
 from tqdm import tqdm
 from pathlib import Path
 import torch
@@ -6,9 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torchxai import XaiTrainer
-from .mnist import cnn as mnistcnn
-# from .cifar10 import cnn as cifar10cnn
+from torchxai.trainer import XaiTrainer
+from .models.plaincnn import CnnMnist
+from .models.resnet import ResNetMnist, ResNetMnistCBAM
 from collections import OrderedDict
 
 
@@ -40,15 +39,38 @@ class ModelTranier(XaiTrainer):
                     ])
             }
         }
+        
         self.model_dict = {
             "mnist": {
-                "cnn": mnistcnn.CnnModel,
-                "cnnwithcbam": mnistcnn.CnnModelWithCBAM
-            }
+                "cnn": CnnMnist,
+                "resnet": ResNetMnist,
+                "resnetcbam": ResNetMnistCBAM
+            },
             "cifar10": {
                 "cnn": None
-                "cnnwithcbam": None
             }
+        }
+
+        # give some arguments to attribution models
+        self.kwargs_packs = {
+            "gradcam": {
+                "cnn": dict(layers_name=None, norm_mode=1),
+                "resnet": dict(layers_name="relu_last", norm_mode=1),
+                "resnetcbam": dict(layers_name="relu_last", norm_mode=1)
+            },
+            "guidedgrad": {
+                "cnn": dict(module_name="convs", act=nn.ReLU),
+                "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
+                "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
+            },
+            "relavance": {
+                "cnn": dict(use_rho=False)
+            },
+            "deconv": {
+                "cnn": dict(module_name="convs")
+            }, 
+            "vanillagrad": None, 
+            "inputgrad": None
         }
 
     def train(self, model, train_loader, optimizer, loss_function, device):
@@ -232,13 +254,13 @@ class ModelTranier(XaiTrainer):
         previous_del_p = list(self.masks_dict[typ+"-mask"])[-1]
         self.masks_dict[typ+"-mask"][del_p] = all_masks + self.masks_dict[typ+"-mask"][previous_del_p]
 
-    def create_attr_model(self, model_class, attr_class, load_path):
+    def create_attr_model(self, model_class, attr_class, load_path, **kwargs):
         """
         recreate the model & load its weights. after this create an attribution model
         """
         model = model_class()
         model.load_state_dict(torch.load(load_path, map_location="cpu"))
-        attr_model = attr_class(model)
+        attr_model = attr_class(model, **kwargs)
         return model, attr_model
 
     def evaluation(self, args, attr_model, del_p):
@@ -259,9 +281,9 @@ class ModelTranier(XaiTrainer):
             shuffle=True)
         return train_loader, test_loader
 
-    def roar(self, args, model_class, attr_class, del_p, sv_path, load_path, device):
+    def roar(self, args, model_class, attr_class, del_p, sv_path, load_path, device, **kwargs):
         # after deletion retrain
-        model, attr_model = self.create_attr_model(model_class, attr_class, load_path)
+        model, attr_model = self.create_attr_model(model_class, attr_class, load_path, **kwargs)
         train_loader, test_loader = self.evaluation(args, attr_model, del_p)
         # start to retrain model
         print("[Alert] Start Retraining")
@@ -289,6 +311,8 @@ class ModelTranier(XaiTrainer):
 
     def main(self, args):
         """
+        `kwargs` will deliver to attr_model arguments
+        
         eval_type: roar, selectivity
         model_type: cnn, cnnwithcbam
         attr_type: deconv, gradcam, guidedgrad, relavance, vanillagrad, inputgrad, guided_gradcam
@@ -333,6 +357,12 @@ class ModelTranier(XaiTrainer):
                 attr_class = self.attr_dict[a_type]
                 # initialize masks_dict
                 self.masks_dict = self.init_masks_dict(args, train_dataset, test_dataset)           
+                # kwargs to attribution model
+                pre_kwargs = self.kwargs_packs.get(a_type)
+                if pre_kwargs is not None:
+                    kwargs = pre_kwargs.get(m_type)
+                else:
+                    kwargs = {"<none>": None}
                 # record the first trained result for the each attribution type begins
                 self.record_result(record_path, create=False, model_type=m_type, del_p=0.0,
                     attr_type=a_type, best_acc=first_best_acc)
@@ -344,7 +374,7 @@ class ModelTranier(XaiTrainer):
                     sv_path = str(sv_attr_path/f"{m_type}-{a_type}-{del_p}.pt")
                     # start retraining
                     if args.eval_type == "roar":
-                        best_acc = self.roar(args, model_class, attr_class, del_p, sv_path, load_path, device)
+                        best_acc = self.roar(args, model_class, attr_class, del_p, sv_path, load_path, device, **kwargs)
                     elif args.eval_type == "selectivity":
                         raise NotImplementedError
                         # self.selectivity(args, model_class, attr_class, del_p, device)

@@ -1,13 +1,10 @@
-from .deconv import DeconvNet
-from .cam import GradCAM
-from .gradient import VanillaGrad, InputGrad, GuidedGrad
-from .relavance import LRP
+from ..model import DeconvNet, GradCAM, VanillaGrad, InputGrad, GuidedGrad, LRP
 from pathlib import Path
 
 class XaiTrainer(object):
     def __init__(self):
         """
-        Must implement under functions
+        Must implement following functions
         - train
         - test
         - main_train
