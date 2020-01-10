@@ -7,7 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torchxai.trainer import XaiTrainer
 from .models.plaincnn import CnnMnist
-from .models.resnet import ResNetMnist, ResNetMnistCBAM
+from .models.resnet import ResNetMnist, ResNetMnistCBAM, ResNetCifar10, ResNetCifar10CBAM
 from collections import OrderedDict
 
 
@@ -47,30 +47,51 @@ class ModelTranier(XaiTrainer):
                 "resnetcbam": ResNetMnistCBAM
             },
             "cifar10": {
-                "cnn": None
+                "cnn": None,
+                "resnet": ResNetCifar10, 
+                "resnetcbam": ResNetCifar10CBAM
             }
         }
 
         # give some arguments to attribution models
         self.kwargs_packs = {
-            "gradcam": {
-                "cnn": dict(layers_name=None, norm_mode=1),
-                "resnet": dict(layers_name="relu_last", norm_mode=1),
-                "resnetcbam": dict(layers_name="relu_last", norm_mode=1)
+            "mnist": {
+                "gradcam": {
+                    "cnn": dict(layers_name=None, norm_mode=1),
+                    "resnet": dict(layers_name="relu_last", norm_mode=1),
+                    "resnetcbam": dict(layers_name="relu_last", norm_mode=1)
+                },
+                "guidedgrad": {
+                    "cnn": dict(module_name="convs", act=nn.ReLU),
+                    "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
+                    "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
+                },
+                "relavance": {
+                    "cnn": dict(use_rho=False)
+                },
+                "deconv": {
+                    "cnn": dict(module_name="convs")
+                }, 
+                "vanillagrad": None, 
+                "inputgrad": None
             },
-            "guidedgrad": {
-                "cnn": dict(module_name="convs", act=nn.ReLU),
-                "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
-                "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
-            },
-            "relavance": {
-                "cnn": dict(use_rho=False)
-            },
-            "deconv": {
-                "cnn": dict(module_name="convs")
-            }, 
-            "vanillagrad": None, 
-            "inputgrad": None
+            "cifar10": {
+                "gradcam": {
+                    "resnet": dict(layers_name="relu_last", norm_mode=3),
+                    "resnetcbam": dict(layers_name="relu_last", norm_mode=3)
+                },
+                "guidedgrad": {
+                    "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
+                    "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
+                },
+                "vanillagrad": None, 
+                "inputgrad": None
+            }
+            
+        }
+
+        self.loss_fn_dict = {
+            
         }
 
     def train(self, model, train_loader, optimizer, loss_function, device):
@@ -244,7 +265,7 @@ class ModelTranier(XaiTrainer):
                                    total=len(data_loader)):
             temp.append(datas)
             outputs = attr_model.get_attribution(datas, targets).detach()
-            masks = calculate_masks(outputs, del_p)
+            masks = calculate_masks(args, outputs, del_p)
             temp_masks.append(masks)
 
         all_datas = torch.cat(temp, dim=0)
@@ -309,6 +330,14 @@ class ModelTranier(XaiTrainer):
             with record_path.open(mode="a", encoding="utf-8") as f:
                 f.write(f"|{model_type}|{attr_type}|{del_p*100:}%|{best_acc:.2f}%|\n")
 
+    def get_kwargs_to_attr_model(self, data_type, m_type, a_type):
+        pre_kwargs = self.kwargs_packs[data_type].get(a_type)
+        if pre_kwargs is not None:
+            kwargs = pre_kwargs.get(m_type)
+        else:
+            kwargs = {"<none>": None}
+        return kwargs
+
     def main(self, args):
         """
         `kwargs` will deliver to attr_model arguments
@@ -358,11 +387,7 @@ class ModelTranier(XaiTrainer):
                 # initialize masks_dict
                 self.masks_dict = self.init_masks_dict(args, train_dataset, test_dataset)           
                 # kwargs to attribution model
-                pre_kwargs = self.kwargs_packs.get(a_type)
-                if pre_kwargs is not None:
-                    kwargs = pre_kwargs.get(m_type)
-                else:
-                    kwargs = {"<none>": None}
+                kwargs = self.get_kwargs_to_attr_model(args.data_type, m_type, a_type)
                 # record the first trained result for the each attribution type begins
                 self.record_result(record_path, create=False, model_type=m_type, del_p=0.0,
                     attr_type=a_type, best_acc=first_best_acc)
@@ -387,4 +412,4 @@ class ModelTranier(XaiTrainer):
                         attr_type=a_type, best_acc=best_acc)
                 # save after all training
                 torch.save(self.masks_dict, sv_attr_path/f"{m_type}-{a_type}.masks")
-
+                del self.masks_dict

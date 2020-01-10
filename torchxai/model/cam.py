@@ -20,7 +20,7 @@ class GradCAM(XaiModel):
         self.norm_mode = norm_mode
         self.global_avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
-        # TODO [RF] 0.1.2 features/layername
+        # DONE [RF] 0.1.2 features/layername
         # not to use `self._find_target_layer_idx` for resnet because is too hard to use
         if layers_name == None:
             # only supported to cnn models which have `convs` layer + ReLU activation

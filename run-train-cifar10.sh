@@ -2,13 +2,13 @@ mkdir -p trainlog
 nohup python -u main.py \
     -pp $HOME/code/XAI \
     -dp $HOME/code/data \
-    -rf cnn-roar-cifar10 \
+    -rf cifar10-resnet-roar \
     -dt cifar10 \
     -et roar \
     -at vanillagrad inputgrad guidedgrad gradcam \
-    -mt cnnwithcbam \
+    -mt resnet resnetcbam \
     -down \
     -bs 256 \
-    -ns 15 \
+    -ns 10 \
     -cuda \
-    -sd 73 > ./trainlog/cnnwithcbam.log &
+    -sd 73 > ./trainlog/cifar10-resnet-roar.log &

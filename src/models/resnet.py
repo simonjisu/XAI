@@ -3,7 +3,7 @@
 # Reference: https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 __author__ = "simonjisu"
 __all__ = [
-    "BasicBlock", "CBAMBlock", "ResNetSimple", "ResNetMnist", "ResNetMnistCBAM"
+    "BasicBlock", "CBAMBlock", "ResNetSimple", "ResNetMnist", "ResNetMnistCBAM", "ResNetCifar10", "ResNetCifar10CBAM"
 ]
 
 import torch
@@ -245,6 +245,8 @@ class ResNetSimple(XaiBase):
         self.register_attention_hooks()
         self._reset_maps()
         o = self.forward(x)
+        for k, hook in self.attn_hooks.items():
+            self._save_maps(k, hook.o)
         return o
         
 # create exists resnet
@@ -279,3 +281,13 @@ def ResNetMnistCBAM(pretrained=False, progress=True, **kwargs):
     """resnetmnist model with CBAM"""
     return _resnet('resnetmnist', BasicBlock, [2, 2, 2], pretrained, progress,
                    img_c=1, num_classes=10, **kwargs)
+
+def ResNetCifar10(pretrained=False, progress=True, **kwargs):
+    """resnetmnist model"""
+    return _resnet('resnetmnist', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+                   img_c=3, num_classes=10, **kwargs)
+
+def ResNetCifar10CBAM(pretrained=False, progress=True, **kwargs):
+    """resnetmnist model with CBAM"""
+    return _resnet('resnetmnist', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+                   img_c=3, num_classes=10, **kwargs)
