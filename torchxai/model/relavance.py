@@ -320,7 +320,7 @@ class relMaxPool2d(XaiHook):
 
 class LRP(XaiModel):
     """LRP"""
-    def __init__(self, model, use_rho=False, **kwargs):
+    def __init__(self, model, use_rho=False):
         """
         module_names: have to be sequential to forward network 
         """

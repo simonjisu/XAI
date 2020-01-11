@@ -7,7 +7,7 @@ from ..base import XaiModel, XaiHook
 
 class GradCAM(XaiModel):
     """GradCAM"""
-    def __init__(self, model, layers_name=None, norm_mode=1, **kwargs):
+    def __init__(self, model, layers_name=None, norm_mode=1):
         """
         args:
         - layers_name

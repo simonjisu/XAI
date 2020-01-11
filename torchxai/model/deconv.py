@@ -7,7 +7,7 @@ from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
     """DeconvNet"""
-    def __init__(self, model, module_name="convs", **kwargs):
+    def __init__(self, model, module_name="convs"):
         super(DeconvNet, self).__init__(model)
         layer_names = ["conv2d", "maxpool2d"]
         self.module_name = module_name

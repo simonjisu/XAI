@@ -30,7 +30,7 @@ class BasicBlock(nn.Module):
             norm_layer = nn.BatchNorm2d
         self.conv1 = conv3x3(in_channels, out_channels, stride=stride)
         self.bn1 = norm_layer(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.relu_last = nn.ReLU()  # Need to record for attribution method
         self.conv2 = conv1x1(out_channels, out_channels)
         self.bn2 = norm_layer(out_channels)
@@ -74,7 +74,7 @@ class CBAMBlock(nn.Module):
         self.conv1 = conv3x3(in_channels, out_channels, stride=stride)
         self.cbam1 = xaimodule.CBAM(C=out_channels, ratio=16, kernel_size=7, stride=1)
         self.bn1 = norm_layer(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.relu_last = nn.ReLU()  # Need to record for attribution method
         self.conv2 = conv1x1(out_channels, out_channels)
         self.cbam2 = xaimodule.CBAM(C=out_channels, ratio=16, kernel_size=7, stride=1)
