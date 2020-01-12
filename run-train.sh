@@ -6,7 +6,7 @@ nohup python -u main.py \
     -dt mnist \
     -et roar \
     -at vanillagrad inputgrad guidedgrad gradcam \
-    -mt resnet resnetcbam \
+    -mt resnet resnetcbam resnetanr \
     -down \
     -bs 256 \
     -ns 10 \

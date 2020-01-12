@@ -11,5 +11,5 @@ __all__ = [
     # gradient
     "VanillaGrad", "InputGrad", "GuidedGrad",
     # relavance
-    "relLinear", "relConv2d", "relMaxPool2d", "relReLU", "LRP"
+    "LRP"
 ]

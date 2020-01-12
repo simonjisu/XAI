@@ -6,10 +6,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torchxai.trainer import XaiTrainer
-from .models.plaincnn import CnnMnist
-from .models.resnet import ResNetMnist, ResNetMnistCBAM, ResNetCifar10, ResNetCifar10CBAM
+from .models import plaincnn, resnet
 from collections import OrderedDict
-
+from torchxai.module.anr import GlobalAttentionGate
 
 class ModelTranier(XaiTrainer):
     def __init__(self):
@@ -42,14 +41,16 @@ class ModelTranier(XaiTrainer):
         
         self.model_dict = {
             "mnist": {
-                "cnn": CnnMnist,
-                "resnet": ResNetMnist,
-                "resnetcbam": ResNetMnistCBAM
+                "cnn": plaincnn.CnnMnist,
+                "resnet": resnet.ResNetMnist,
+                "resnetcbam": resnet.ResNetMnistCBAM,
+                "resnetanr": resnet.ResNetMnistANR
             },
             "cifar10": {
                 "cnn": None,
-                "resnet": ResNetCifar10, 
-                "resnetcbam": ResNetCifar10CBAM
+                "resnet": resnet.ResNetCifar10, 
+                "resnetcbam": resnet.ResNetCifar10CBAM,
+                "resnetanr": resnet.ResNetMnistANR
             }
         }
 
@@ -62,9 +63,9 @@ class ModelTranier(XaiTrainer):
                     "resnetcbam": dict(layers_name="relu_last", norm_mode=1)
                 },
                 "guidedgrad": {
-                    "cnn": dict(module_name="convs", act=nn.ReLU),
-                    "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
-                    "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
+                    "cnn": dict(act=nn.ReLU),
+                    "resnet": dict(act=nn.ReLU),
+                    "resnetcbam": dict(act=nn.ReLU)
                 },
                 "relavance": {
                     "cnn": dict(use_rho=False)
@@ -81,8 +82,8 @@ class ModelTranier(XaiTrainer):
                     "resnetcbam": dict(layers_name="relu_last", norm_mode=3)
                 },
                 "guidedgrad": {
-                    "resnet": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU),
-                    "resnetcbam": dict(module_name=["resnet_layers", "relu"], act=nn.ReLU)
+                    "resnet": dict(act=nn.ReLU),
+                    "resnetcbam": dict(act=nn.ReLU)
                 },
                 "vanillagrad": None, 
                 "inputgrad": None
@@ -91,8 +92,22 @@ class ModelTranier(XaiTrainer):
         }
 
         self.loss_fn_dict = {
-            
+            "anr": GlobalAttentionGate.loss_function,
+            "crossentropy": nn.CrossEntropyLoss
         }
+
+    def _cal_loss(self, model, loss_function, datas, targets):
+        if "anr" in self.m_type:
+            outputs, reg_loss = model(datas)
+            loss = loss_function(outputs, targets, reg_loss)
+        else:
+            outputs = model(datas)
+            loss = loss_function(outputs, targets)
+        if model.training:
+            return loss
+        else:
+            return loss, outputs
+
 
     def train(self, model, train_loader, optimizer, loss_function, device):
         train_loss = 0
@@ -100,8 +115,7 @@ class ModelTranier(XaiTrainer):
         for datas, targets in train_loader:
             datas, targets = datas.to(device), targets.to(device)
             optimizer.zero_grad()
-            outputs = model(datas)
-            loss = loss_function(outputs, targets)
+            loss = self._cal_loss(model, loss_function, datas, targets)
             loss.backward()
             optimizer.step()
             
@@ -109,30 +123,32 @@ class ModelTranier(XaiTrainer):
                     
         return train_loss
 
-    def test(self, model, test_loader, device):
+    def test(self, model, test_loader, loss_function, device):
         model.eval()
         test_loss = 0
         corrects = 0
         with torch.no_grad():
             for datas, targets in test_loader:
                 datas, targets = datas.to(device), targets.to(device)
-                outputs = model(datas)
-                test_loss += F.cross_entropy(outputs, targets, reduction="sum").item()
+                loss, outputs = self._cal_loss(model, loss_function, datas, targets)
+                test_loss += loss.item()
                 preds = outputs.argmax(dim=1, keepdim=True)
                 corrects += preds.eq(targets.view_as(preds)).sum().item()
         
-        test_loss /= len(test_loader.dataset)
         test_acc = 100*(corrects / len(test_loader.dataset))
 
         return test_loss, test_acc
 
     def main_train(self, model, train_loader, test_loader, n_step, sv_path, device):
-        loss_function = nn.CrossEntropyLoss()
+        if "anr" in self.m_type:
+            loss_function = self.loss_fn_dict["anr"]
+        else:
+            loss_function = self.loss_fn_dict["crossentropy"]()
         optimizer = optim.Adam(model.parameters())
         best_acc = 0.0
         for step in range(n_step):
             train_loss = self.train(model, train_loader, optimizer, loss_function, device)
-            test_loss, test_acc = self.test(model, test_loader, device)
+            test_loss, test_acc = self.test(model, test_loader, loss_function, device)
             print(f"[Step] {step+1}/{n_step}")
             print(f"[Train] Average loss: {train_loss:.4f}")
             print(f"[Test] Average loss: {test_loss:.4f}, Accuracy: {test_acc:.2f}%")
@@ -275,13 +291,13 @@ class ModelTranier(XaiTrainer):
         previous_del_p = list(self.masks_dict[typ+"-mask"])[-1]
         self.masks_dict[typ+"-mask"][del_p] = all_masks + self.masks_dict[typ+"-mask"][previous_del_p]
 
-    def create_attr_model(self, model_class, attr_class, load_path, **kwargs):
+    def create_attr_model(self, model_class, attr_class, load_path, attr_kwargs):
         """
         recreate the model & load its weights. after this create an attribution model
         """
         model = model_class()
         model.load_state_dict(torch.load(load_path, map_location="cpu"))
-        attr_model = attr_class(model, **kwargs)
+        attr_model = attr_class(model, **attr_kwargs)
         return model, attr_model
 
     def evaluation(self, args, attr_model, del_p):
@@ -302,9 +318,9 @@ class ModelTranier(XaiTrainer):
             shuffle=True)
         return train_loader, test_loader
 
-    def roar(self, args, model_class, attr_class, del_p, sv_path, load_path, device, **kwargs):
+    def roar(self, args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs):
         # after deletion retrain
-        model, attr_model = self.create_attr_model(model_class, attr_class, load_path, **kwargs)
+        model, attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
         train_loader, test_loader = self.evaluation(args, attr_model, del_p)
         # start to retrain model
         print("[Alert] Start Retraining")
@@ -370,6 +386,7 @@ class ModelTranier(XaiTrainer):
         torch.cuda.manual_seed(args.seed)
         
         for m_type in args.model_type:
+            self.m_type = m_type
             # select a model class
             model_class = self.model_dict[args.data_type][m_type]
             # first training
@@ -387,7 +404,7 @@ class ModelTranier(XaiTrainer):
                 # initialize masks_dict
                 self.masks_dict = self.init_masks_dict(args, train_dataset, test_dataset)           
                 # kwargs to attribution model
-                kwargs = self.get_kwargs_to_attr_model(args.data_type, m_type, a_type)
+                attr_kwargs = self.get_kwargs_to_attr_model(args.data_type, m_type, a_type)
                 # record the first trained result for the each attribution type begins
                 self.record_result(record_path, create=False, model_type=m_type, del_p=0.0,
                     attr_type=a_type, best_acc=first_best_acc)
@@ -399,7 +416,7 @@ class ModelTranier(XaiTrainer):
                     sv_path = str(sv_attr_path/f"{m_type}-{a_type}-{del_p}.pt")
                     # start retraining
                     if args.eval_type == "roar":
-                        best_acc = self.roar(args, model_class, attr_class, del_p, sv_path, load_path, device, **kwargs)
+                        best_acc = self.roar(args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs)
                     elif args.eval_type == "selectivity":
                         raise NotImplementedError
                         # self.selectivity(args, model_class, attr_class, del_p, device)

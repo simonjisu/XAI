@@ -6,9 +6,9 @@ nohup python -u main.py \
     -dt cifar10 \
     -et roar \
     -at vanillagrad inputgrad guidedgrad gradcam \
-    -mt resnet resnetcbam \
+    -mt resnet resnetcbam resnetanr \
     -down \
     -bs 256 \
-    -ns 10 \
+    -ns 30 \
     -cuda \
     -sd 73 > ./trainlog/cifar10-resnet-roar.log &

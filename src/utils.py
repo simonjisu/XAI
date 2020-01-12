@@ -29,7 +29,7 @@ def argument_parsing(preparse=False):
                         Insert at least one method, some attribution method will not be supported to some models. \
                         example:`-at deconv gradcam`")
     parser.add_argument("-mt", "--model_type", nargs="+", required=True,
-                   help="Model Type: cnn, resnet, resnetcbam \
+                   help="Model Type: cnn, resnet, resnetcbam, resnetanr \
                         Insert at least one method, some attribution method will not be supported to some models. \
                         example:`-mt cnn cnnwithcbam`")
     # attribution details

@@ -1,6 +1,10 @@
-from .cbam import ChannelAttention, SpatialAttention, CBAM
+from .cbam import CBAM
+from .anr import AttentionModule, GlobalAttentionGate
+
 
 __all__ = [
     # cbam
-    "ChannelAttention", "SpatialAttention", "CBAM"
+    "CBAM"
+    # anr
+    "AttentionModule", "GlobalAttentionGate"
 ]
