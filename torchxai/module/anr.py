@@ -36,8 +36,8 @@ class AttentionHead(nn.Module):
         calculate reg_loss
         """
         # (B, K, H*W) x (B, H*W, K) > (B, K, K)
-        reg_loss = self.diag.to(self.masks.device) * torch.bmm(self.masks_score, self.masks_score.transpose(1, 2))
-        return reg_loss
+        reg_loss = self.diag.to(self.masks_score.device) * torch.bmm(self.masks_score, self.masks_score.transpose(1, 2))
+        return reg_loss.sum()
 
 
 class AttentionOut(nn.Module):
@@ -124,22 +124,24 @@ class GlobalAttentionGate(nn.Module):
     def __init__(self, in_c, n_hypothesis, gate_fn="softmax"):
         """
         args:
-        - in_c: the number of input channels
-        - n_hypothesis: the number of total hypothesis, including original output vector and attention outputs(count as: N)
+        - in_c: the number of input features
+        - n_hypothesis: the number of total hypothesis, including original output vector and attention outputs
         """
         super(GlobalAttentionGate, self).__init__()
         self.n_hypothesis = n_hypothesis
         self.gate_fn = gate_fn
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.gate_layer = nn.Linear(in_c, n_hypothesis, bias=False)
     
     def cal_global_gates(self, x):
-        x = torch.flatten(x, 1)  # (B, C*H*W) > (B, N+1)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)  # (B, C) > (B, N)
         c = torch.tanh(self.gate_layer(x))
         if self.gate_fn == "softmax":
             global_gates = torch.softmax(c, dim=1)
         elif self.gate_fn == "sigmoid":
             global_gates = torch.sigmoid(c)
-        return global_gates.unsqueeze(-1)  # (B, N+1, 1)
+        return global_gates.unsqueeze(-1)  # (B, N, 1)
     
     def forward(self, x, hypothesis):
         """
@@ -150,13 +152,13 @@ class GlobalAttentionGate(nn.Module):
         returns:
         - global_gates: (B, N+1)
         """
-        global_gates = self.cal_global_gates(x)  # (B, N+1, 1)
-        outputs = torch.cat(hypothesis, dim=1)  #(B, N+1, L)
+        global_gates = self.cal_global_gates(x)  # (B, N, 1)
+        outputs = torch.cat(hypothesis, dim=1)  #(B, N, L)
         outputs = torch.log_softmax(outputs, dim=2)  # calculate log probs
         outputs_net = (outputs * global_gates).sum(1)  # (B, L)
         return outputs_net
 
     @staticmethod
-    def loss_function(outputs_net, targets, reg_loss):
-        loss = F.nll_loss(outputs_net, tragets) + reg_loss
+    def loss_function(outputs_net, targets, reg_loss, reduction="mean"):
+        loss = F.nll_loss(outputs_net, targets, reduction=reduction) + reg_loss
         return loss

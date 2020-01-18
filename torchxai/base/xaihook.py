@@ -46,32 +46,32 @@ class XaiHook(nn.Module):
         - backward: (gradient_input, weight, bias)
         
         """
-        def default_hook_fn(m, i, o):
-            """
-            forward
-             - m: module class
-             - i: forward input from previous layer
-             - o: forward output to next layer
-            backward
-             - m: module class
-             - i: gradient input to next layer (backward out)
-             - o: gradient output from previous layer (backward in)
-
-            args:
-             * i, o: tuple type
-            """
-            self.m = m
-            self.i = i
-            self.o = o
-            
         if hook_fn is None:
-            self.hook_fn = default_hook_fn
+            self.hook_fn = self.default_hook_fn
         else:
             self.hook_fn = hook_fn
         if not backward:
             self.hook = self.module.register_forward_hook(self.hook_fn)
         else:
             self.hook = self.module.register_backward_hook(self.hook_fn)
-            
+
+    def default_hook_fn(self, m, i, o):
+        """
+        forward
+            - m: module class
+            - i: forward input from previous layer
+            - o: forward output to next layer
+        backward
+            - m: module class
+            - i: gradient input to next layer (backward out)
+            - o: gradient output from previous layer (backward in)
+
+        args:
+            * i, o: tuple type
+        """
+        self.m = m
+        self.i = i
+        self.o = o
+
     def close(self):
         self.hook.remove()

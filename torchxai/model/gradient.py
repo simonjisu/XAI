@@ -42,8 +42,8 @@ class GuidedReLU(XaiHook):
     """GuidedReLU"""
     def __init__(self, module):
         super(GuidedReLU, self).__init__(module)
-        self.register_hook(backward=False)
-        self.register_hook(backward=True, hook_fn=self.b_hook)
+        self.register_forward_hook(self.default_hook_fn)
+        self.register_backward_hook(self.b_hook)
 
     def b_hook(self, m, i, o):
         """

@@ -17,8 +17,10 @@ class relLinear(XaiHook):
         super(relLinear, self).__init__(module)
         self.out_features = self.module.out_features
         self.use_rho = use_rho
-        self.register_hook(backward=False, hook_fn=self.f_hook)
-        self.register_hook(backward=True, hook_fn=self.b_hook)
+        self.register_forward_hook(self.f_hook)
+        self.register_backward_hook(self.b_hook)
+        # self.register_hook(backward=False, hook_fn=self.f_hook)
+        # self.register_hook(backward=True, hook_fn=self.b_hook)
     
     def f_hook(self, m, i, o):
         """
@@ -106,7 +108,9 @@ class relReLU(XaiHook):
     """relReLU"""
     def __init__(self, module):
         super(relReLU, self).__init__(module)
-        self.register_hook(backward=True, hook_fn=self.b_hook)
+        # self.register_forward_hook(self.f_hook)
+        self.register_backward_hook(self.b_hook)
+        # self.register_hook(backward=True, hook_fn=self.b_hook)
         
     def b_hook(self, m, i, o):
         """
@@ -130,8 +134,10 @@ class relConv2d(XaiHook):
         """
         super(relConv2d, self).__init__(module)
         self.use_rho = use_rho
-        self.register_hook(backward=False, hook_fn=self.f_hook)
-        self.register_hook(backward=True, hook_fn=self.b_hook)
+        self.register_forward_hook(self.f_hook)
+        self.register_backward_hook(self.b_hook)
+        # self.register_hook(backward=False, hook_fn=self.f_hook)
+        # self.register_hook(backward=True, hook_fn=self.b_hook)
     
     def f_hook(self, m, i, o):
         """
@@ -245,8 +251,10 @@ class relMaxPool2d(XaiHook):
         """
         super(relMaxPool2d, self).__init__(module)
         self.use_rho = use_rho
-        self.register_hook(backward=False, hook_fn=self.f_hook)
-        self.register_hook(backward=True, hook_fn=self.b_hook)
+        self.register_forward_hook(self.f_hook)
+        self.register_backward_hook(self.b_hook)
+        # self.register_hook(backward=False, hook_fn=self.f_hook)
+        # self.register_hook(backward=True, hook_fn=self.b_hook)
     
     def f_hook(self, m, i, o):
         """
