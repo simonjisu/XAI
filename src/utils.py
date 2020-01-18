@@ -76,16 +76,21 @@ class Explorer(ModelTranier):
         self.data_type = args.data_type
         self.eval_type = args.eval_type
         self.reduce_color_dim = args.reduce_color_dim
+        self.prj_path = Path(args.prj_path)
         if self.reduce_color_dim is not None:
             path_txt = f"trained/{self.data_type}/{self.eval_type}/{self.reduce_color_dim}"
         else:
             path_txt = f"trained/{self.data_type}/{self.eval_type}"
-        self.p = Path().absolute() / path_txt
+        self.p = self.prj_path / path_txt
+        
         _, self.test_dataset, *_ = self.build_dataset(args)
         self.img_dict, self.idx_to_class = self.build_img_dict(self.test_dataset)
-        self.attention_dict = {"none": None}
+        # attenion options
+        self.attention_dict_default = {"none": None}
+        self.attention_dict = self.attention_dict_default
+        self.attn_option = False
         self.attn_c_max = 0
-        self.cam_max = 6
+        self.cam_max = 5
         
     def build_img_dict(self, dataset):
         """
@@ -190,8 +195,7 @@ class Explorer(ModelTranier):
                 self.attention_dict = attr_model.model.maps
             self.wg_attn.options = self.attention_dict.keys()
         else:
-            self.attention_dict = {"none": None}
-            
+            self.attention_dict = self.attention_dict_default            
         if C == 3:
             # (1, C, H, W) > (1, H, W, C)
             masked_img = masked_x.squeeze().permute(1, 2, 0)
@@ -218,27 +222,38 @@ class Explorer(ModelTranier):
         self.wg_attn = widgets.Dropdown(options=self.attention_dict.keys(), description='Attention:', disabled=False, style=style)
         self.wg_attn_c = widgets.IntSlider(description='Channel Select', value=0, min=0, max=self.attn_c_max, style=style)
         self.wg_reduce_dim = widgets.Checkbox(value=False, disabled=False, indent=False, style=style)
-        form_item_layout = widgets.Layout(
-            display='flex',
-            flex_flow='column',
-            justify_content='space-around',
-        )
+        # form_item_layout = widgets.Layout(
+        #     display='flex',
+        #     flex_flow='column',
+        # )
         # m_type | index   | cam 
         # a_type | del_p   | attn
         # label  | rcd_box | attn_c
         # Layout(flex='1 1 auto', width='auto')
-        rcd_box = widgets.Box([widgets.Label("Whether Reduce Channel dimension: ", style=style), self.wg_reduce_dim], layout=widgets.Layout(flex_flow="row"))
-        left_box = widgets.VBox([self.wg_m_types, self.wg_a_types, self.wg_label], layout=form_item_layout)
-        middle_box = widgets.VBox([self.wg_index, self.wg_del_p, rcd_box], layout=form_item_layout)
-        right_box = widgets.VBox([self.wg_cam, self.wg_attn, self.wg_attn_c], layout=form_item_layout)
-
+        rcd_box = widgets.Box([widgets.Label("Whether Reduce Channel dimension: ", style=style), self.wg_reduce_dim], 
+                                layout=widgets.Layout(flex_flow="row", justify_content="space-between"))
+        left_box = widgets.VBox([self.wg_m_types, self.wg_a_types, self.wg_label], 
+                    layout=widgets.Layout(
+                        display='flex',
+                        flex_flow='column',
+                    ))
+        middle_box = widgets.VBox([self.wg_index, self.wg_del_p, rcd_box], 
+                    layout=widgets.Layout(
+                        display='flex',
+                        flex_flow='column',
+                        width='320px'
+                    ))
+        right_box = widgets.VBox([self.wg_cam, self.wg_attn, self.wg_attn_c], 
+                    layout=widgets.Layout(
+                        display='flex',
+                        flex_flow='column',
+                    ))
         form = widgets.HBox([left_box, middle_box, right_box], layout=widgets.Layout(
-            display='flex',
+            display='inline-flex',
             flex_flow='row',
             border='solid 2px',
-            align_items='stretch',
-            justify_content='space-around',
-            width='80%'
+            justify_content='space-between',
+            # width='100%'
         ))
         interactive_dict = {"m_type": self.wg_m_types, "a_type": self.wg_a_types, "label": self.wg_label, 
                             "index": self.wg_index, "del_p": self.wg_del_p, "cam": self.wg_cam, 
@@ -259,14 +274,18 @@ class Explorer(ModelTranier):
         plotimgs = [img, attribution, masks, masked_img]
         for i, (ax, im, title)in enumerate(zip(axes, plotimgs, titles)):
             if i == 1:
-                ax.imshow(im, cmap="rainbow")
+                im_color = ax.imshow(im, cmap="rainbow")
+                # attribution maps
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.05)
+                fig.colorbar(im_color, cax=cax)
             elif i == 2:
                 ax.imshow(im, cmap="YlGn")
             else:
                 ax.imshow(im)
             ax.set_title(title)
             ax.axis("off")
-            
+        
         # draw attention
         fig2 = plt.figure(figsize=(14, 5), constrained_layout=False)
         if self.attention_dict.get(attn) is not None:            
@@ -282,7 +301,7 @@ class Explorer(ModelTranier):
                 c_attn, s_attn, out_attn = self.attention_dict.get(attn)
                 s_attn_interpolated = F.interpolate(s_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
             
-                im1 = f2_ax1.matshow(c_attn.squeeze().unsqueeze(0), cmap="rainbow")
+                f2_ax1.matshow(c_attn.squeeze().unsqueeze(0), cmap="rainbow")
                 f2_ax1.yaxis.set_visible(False)
                 f2_ax1.xaxis.set_ticks_position('bottom')
                 f2_ax1.set_title(f"Channel Attentions (Total: {c_attn.size(1)})")
@@ -314,8 +333,8 @@ class Explorer(ModelTranier):
                 f2_ax5.set_title(f"Output after Attention(Interpolated)")
                 f2_ax5.axis("off")
                 
-                all_ims = [im1, im2, im3, im4, im5]
-                all_axes = [f2_ax1, f2_ax2, f2_ax3, f2_ax4, f2_ax5]
+                all_ims = [im2, im3, im4, im5]
+                all_axes = [f2_ax2, f2_ax3, f2_ax4, f2_ax5]
                 for im_color, ax_color in zip(all_ims, all_axes):
                     divider = make_axes_locatable(ax_color)
                     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -356,7 +375,12 @@ class Explorer(ModelTranier):
                     fig2.colorbar(im_color, cax=cax)
             plt.show()
         else:
+            self.wg_attn.set_trait("value", "none")
             plt.close(fig2)
+            
+            # self.attention_dict = self.attention_dict_default
+            # self.wg_attn.options = self.attention_dict.keys()
+            # self.wg_attn.set_trait("value", "none")
             
     def show(self):
         form, interactive_dict = self.create_widgets()
