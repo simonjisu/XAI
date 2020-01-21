@@ -1,5 +1,8 @@
 .ipynb_checkpoints
 __pycache__
-trained
+*.masks
+*.data
+*.dict
 .vscode
 *.log
+trained/*/masksdatas

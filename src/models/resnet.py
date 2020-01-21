@@ -392,7 +392,7 @@ class ResNetANR(ResNetBase):
                 resnet_layers.append(self._modules[f"attn{i+1}"])
         return nn.ModuleList(resnet_layers)
 
-    def _forward_impl(self, x):
+    def _forward_impl(self, x, f_map=False):
         reg_loss = 0.0
         hypothesis = []
         x = self.conv1(x)  
@@ -416,11 +416,13 @@ class ResNetANR(ResNetBase):
         hypothesis.append(x.unsqueeze(1))  # + (B, 1, L)
 
         o = self.global_attn_gate(last_conv, hypothesis)
+        if f_map:
+            self.global_weight = self.global_attn_gate.cal_global_gates(last_conv)
         self.reg_loss = reg_loss
         return o
 
-    def forward(self, x):
-        return self._forward_impl(x)
+    def forward(self, x, f_map=False):
+        return self._forward_impl(x, f_map)
 
     def register_attention_hooks(self):
         self.hooks = OrderedDict()
@@ -437,9 +439,10 @@ class ResNetANR(ResNetBase):
     def forward_map(self, x):
         self.register_attention_hooks()
         self._reset_maps()
-        o = self.forward(x)
+        o = self.forward(x, f_map=True)
         for k, hook in self.hooks.items():
             self._save_maps(k, hook.o)
+        
         return o
 
 
@@ -481,14 +484,14 @@ def ResNetMnistANR():
 
 def ResNetCifar10():
     """cifar10 model"""
-    return _resnet(ResNetBase, BasicBlock, [2, 2, 2], img_c=3, num_cls=10, zero_init_residual=True)
+    return _resnet(ResNetBase, BasicBlock, [2, 2], img_c=3, num_cls=10, zero_init_residual=True)
 
 def ResNetCifar10CBAM():
     """cifar10 model with CBAM"""
-    return _resnet(ResNetCBAM, BasicBlockCBAM, [2, 2, 2], img_c=3, num_cls=10, zero_init_residual=True)
+    return _resnet(ResNetCBAM, BasicBlockCBAM, [2, 2], img_c=3, num_cls=10, zero_init_residual=True)
 
 def ResNetCifar10ANR():
     """cifar10 model with ANR"""
-    return _resnet(ResNetANR, BasicBlock, [2, 2, 2], img_c=3, num_cls=10, zero_init_residual=True, 
+    return _resnet(ResNetANR, BasicBlock, [2, 2], img_c=3, num_cls=10, zero_init_residual=True, 
         norm_layer=None, n_head=4, reg_weight=0.01, gate_fn="softmax")
         

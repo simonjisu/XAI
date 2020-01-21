@@ -2,12 +2,14 @@ mkdir -p trainlog
 nohup python -u main.py \
     -pp $HOME/code/XAI \
     -dp $HOME/code/data \
+    -rf cifar10-resnetsmall-roar \
     -dt cifar10 \
-    -mt resnet resnetcbam resnetanr \
+    -et roar \
+    -at random vanillagrad inputgrad guidedgrad gradcam \
+    -mt resnet resnetcbam resnetanr\
     -down \
-    -rcd mean \
-    -bs 128 \
-    -ns 40 \
+    -bs 256 \
+    -ns 35 \
     -cuda \
     -skip2 \
-    -sd 73 > ./trainlog/cifar10-train.log &
+    -sd 73 > ./trainlog/cifar10-resnetsmall-roar.log &

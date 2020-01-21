@@ -15,7 +15,7 @@ class CnnMnist(XaiBase):
         """
         CNN: 
         convs:
-            Conv2d(1, 32, 5)      28 > 24
+            Conv2d(1, 28, 5)      28 > 24
             ReLU()
             MaxPool2d(2)          24 > 12
             Conv2d(32, 64, 3)     12 > 10

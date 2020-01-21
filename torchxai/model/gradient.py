@@ -6,8 +6,9 @@ from ..base import XaiModel, XaiHook
 
 class VanillaGrad(XaiModel):
     """VanillaGrad"""
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, norm_mode=1):
         super(VanillaGrad, self).__init__(model)
+        self.norm_mode = norm_mode
         
     def get_attribution(self, x, targets):
         """vanilla gradient"""
@@ -18,13 +19,16 @@ class VanillaGrad(XaiModel):
         output.backward(grad)
         x_grad = x.grad.data.clone()
         x.requires_grad_(requires_grad=False)
+        if self.norm_mode:
+            x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad
 
 
 class InputGrad(XaiModel):
     """InputGrad"""
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, norm_mode=1):
         super(InputGrad, self).__init__(model)
+        self.norm_mode = norm_mode
         
     def get_attribution(self, x, targets):
         """vanilla gradient*input"""
@@ -35,8 +39,10 @@ class InputGrad(XaiModel):
         output.backward(grad)
         x_grad = x.grad.data.clone()
         x.requires_grad_(requires_grad=False)
-        
-        return x_grad * x.data
+        x_grad = x_grad * x.data
+        if self.norm_mode:
+            x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
+        return x_grad
 
 class GuidedReLU(XaiHook):
     """GuidedReLU"""
@@ -60,11 +66,12 @@ class GuidedReLU(XaiHook):
 
 class GuidedGrad(XaiModel):
     """GuidedGrad"""
-    def __init__(self, model, act=nn.ReLU):
+    def __init__(self, model, act=nn.ReLU, norm_mode=1):
         """
         """
         super(GuidedGrad, self).__init__(model)
         self.act = act
+        self.norm_mode = norm_mode
         self.act_dict = {
             nn.ReLU: GuidedReLU
         }
@@ -88,9 +95,12 @@ class GuidedGrad(XaiModel):
 
     def get_attribution(self, x, targets):
         x.requires_grad_(True)
+        self.model.zero_grad()
         output = self.model(x)
         grad = self._one_hot(targets, module_name="fc")
         output.backward(grad)
         x_grad = x.grad.data.clone()
         x.requires_grad_(False)
+        if self.norm_mode:
+            x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad

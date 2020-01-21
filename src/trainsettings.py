@@ -57,6 +57,8 @@ class ModelTranier(XaiTrainer):
         }
 
         # give some arguments to attribution models
+        self.default_kwargs = dict(norm_mode=1)
+        # self.default_kwargs = {"<none>": None}
         self.kwargs_packs = {
             "mnist": {
                 "gradcam": {
@@ -66,19 +68,21 @@ class ModelTranier(XaiTrainer):
                     "resnetanr": dict(layers_name="relu_last", norm_mode=1)
                 },
                 "guidedgrad": {
-                    "cnn": dict(act=nn.ReLU),
-                    "resnet": dict(act=nn.ReLU),
-                    "resnetcbam": dict(act=nn.ReLU),
-                    "resnetanr": dict(act=nn.ReLU)
+                    "cnn": dict(act=nn.ReLU, norm_mode=1),
+                    "resnet": dict(act=nn.ReLU, norm_mode=1),
+                    "resnetcbam": dict(act=nn.ReLU, norm_mode=1),
+                    "resnetanr": dict(act=nn.ReLU, norm_mode=1)
                 },
                 "relavance": {
-                    "cnn": dict(use_rho=False)
+                    "cnn": dict(use_rho=False, norm_mode=1)
                 },
                 "deconv": {
-                    "cnn": dict(module_name="convs")
+                    "cnn": dict(module_name="convs", norm_mode=1)
                 }, 
-                "vanillagrad": None, 
-                "inputgrad": None
+                # if None > will be set to default_kwargs
+                "vanillagrad": None,
+                "inputgrad": None,
+                "random": None
             },
             "cifar10": {
                 "gradcam": {
@@ -87,12 +91,13 @@ class ModelTranier(XaiTrainer):
                     "resnetanr": dict(layers_name="relu_last", norm_mode=1)
                 },
                 "guidedgrad": {
-                    "resnet": dict(act=nn.ReLU),
-                    "resnetcbam": dict(act=nn.ReLU),
-                    "resnetanr": dict(act=nn.ReLU)
+                    "resnet": dict(act=nn.ReLU, norm_mode=1),
+                    "resnetcbam": dict(act=nn.ReLU, norm_mode=1),
+                    "resnetanr": dict(act=nn.ReLU, norm_mode=1)
                 },
-                "vanillagrad": None, 
-                "inputgrad": None
+                "vanillagrad": None,
+                "inputgrad": None,
+                "random": None
             }
             
         }
@@ -208,7 +213,32 @@ class ModelTranier(XaiTrainer):
         # relavance method is restricted to use custom models
         pass
     
-    def convert_scale(self, outputs, C):
+    def calculate_masks(self, outputs, del_p):
+        """
+        importance ranking masks by percentages, always descending option!!!
+        
+        outputs = attributions
+        return (B, C, H, W) bool tensor
+        """
+        B, C, H, W = outputs.size()
+        reshaped_outputs = outputs.view(B, -1)
+        # outputs, C = self.convert_scale(outputs, C)
+        # reshaped_outputs = outputs.view(B, C, -1)
+        # del_n_idx = torch.LongTensor([int(del_p * H * W)])
+        # delete_idxes = idxes[:, :, :del_n_idx]
+        # masks = torch.zeros((B, C, H*W), dtype=torch.bool).scatter(-1, delete_idxes, True)
+
+        # some reference: https://github.com/google-research/google-research/blob/master/interpretability_benchmark/data_input.py#L146
+        # but not activate in this code
+        # reshaped_outputs += 1e-6  # add small epsilon
+        
+        idxes = reshaped_outputs.argsort(-1, descending=True)
+        del_n_idx = torch.LongTensor([int(del_p * C * H * W)])  # Mnist 28*28 / Cifar10 3*32*32
+        delete_idxes = idxes[:, :del_n_idx]
+        masks = torch.zeros((B, C*H*W), dtype=torch.bool).scatter(-1, delete_idxes, True)
+        return masks.view(B, C, H, W)
+
+    def convert_scale(self, outputs):
         """
         reference: https://en.wikipedia.org/wiki/Grayscale
         methods: mean, rec601, itu_r_bt707, itu_r_bt2100
@@ -228,7 +258,7 @@ class ModelTranier(XaiTrainer):
         Y = 0.2627*R + 0.6780*G + 0.0593*B
         """
         if outputs.size(1) == 1:
-            return outputs, C        
+            return outputs
         else:
             method_dict = {
                 "mean": [1/3, 1/3, 1/3],
@@ -241,37 +271,26 @@ class ModelTranier(XaiTrainer):
                 return (x * w).sum(1)
             if self.reduce_color_dim is not None:
                 w = method_dict[self.reduce_color_dim]
-                outputs = weighted_sum(outputs, w)
+                outputs = weighted_sum(outputs.float(), w)
                 if len(outputs.size()) == 3:
                     outputs = outputs.unsqueeze(1)
-                C = 1
-                return outputs, C
+                
+                return outputs.byte()
             else:
-                return outputs, C
+                return outputs
 
-    def calculate_masks(self, outputs, del_p):
-        B, C, H, W = outputs.size()
-        outputs, C = self.convert_scale(outputs, C)
-        reshaped_outputs = outputs.view(B, C, -1)
-        vals, _ = reshaped_outputs.sort(-1, descending=True)
-        # decide how many pixels to delete
-        del_n_idx = torch.LongTensor([int(del_p * H * W)])  
-        del_vals = vals.index_select(-1, del_n_idx)
-        del_masks = (reshaped_outputs >= del_vals).view(B, C, H, W)
-        return del_masks
-
-    def get_masks(self, args, data_loader, attr_model, delete_percentages, typ):
+    def get_masks(self, data_loader, attr_model, percentages, typ):
         """
         Get masks to delete and corresponding datas
-        """
         
-        if args.data_type.lower() == "mnist":
+        """
+        if self.data_type.lower() == "mnist":
             tf = transforms.Compose([
                     transforms.ToPILImage()
             ])
             # mnist (B, H, W) > (B, 1, H, W)
             inv_transform = lambda tensor: torch.ByteTensor([np.array(tf(x)) for x in tensor]).unsqueeze(1)
-        elif args.data_type.lower() == "cifar10":
+        elif self.data_type.lower() == "cifar10":
             inv_normalize = transforms.Normalize(
                     mean=[-0.4914/0.2470, -0.4822/0.2435, -0.4465/0.2616],
                     std=[1/0.2470, 1/0.2435, 1/0.2616]
@@ -291,32 +310,59 @@ class ModelTranier(XaiTrainer):
             if self.first_eval:
                 origin_datas = inv_transform(datas)
                 temp.append(origin_datas)
-            outputs = attr_model.get_attribution(datas, targets).detach()
+            if self.a_type == "random":  # Baseline 
+                outputs = attr_model.get_attribution(datas, self.seed).detach()
+            else:
+                outputs = attr_model.get_attribution(datas, targets).detach() 
             temp_outputs.append(outputs)
         
         if self.first_eval:
             all_datas = torch.cat(temp, dim=0)
-            torch.save(all_datas, str(self.sv_attr_path / f"{self.data_type}-{typ}.data"))
-        all_attributions = torch.cat(temp_outputs, dim=0)    
+            torch.save(all_datas, str(self.sv_masks_datas / f"{self.data_type}-{typ}.data"))
+        all_attributions = torch.cat(temp_outputs, dim=0)
+        # if reduce dim is on, will convert to another scale (B, 1, H, W)
+        all_attributions = self.convert_scale(all_attributions)
 
-        for del_p in tqdm(delete_percentages, 
-                          desc=f"- [{typ}] deleting by attributions", 
-                          total=len(delete_percentages)):
+        for del_p in tqdm(percentages, 
+                          desc=f"- [{typ}] masking by attributions", 
+                          total=len(percentages)):
             all_masks = self.calculate_masks(all_attributions, del_p)
-            torch.save(all_masks, str(self.sv_attr_path / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))
+            # importance ranking masks by percentages, always descending option!!!
+            torch.save(all_masks, str(self.sv_masks_datas / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))
+
+    def fill_datas_by_masks(self, datas, masks):
+        """
+        datas: (B, C, H, W) ByteTensor
+        masks: (B, C, H, W) BoolTensor
+
+        returns: (B, C, H, W) ByteTensor
+        """
+        B, C, *_ = datas.size()
+        if self.fill_global_mean:
+            # global_mean_by_channel 
+            global_means = datas.float().view(B, C, -1).mean(-1, keepdim=True).mean(0, keepdim=True).byte()  # (1, 3, 1)
+            fill_value = global_means.unsqueeze(-1).expand(datas.size())
+            mask_fn = torch.masked_scatter
+        else:
+            fill_value = 0
+            mask_fn = torch.masked_fill
+        # ROAR:
+        if self.eval_type == "roar":
+            new_datas = mask_fn(datas, masks, fill_value)
+        elif self.eval_type == "kar":
+            new_datas = mask_fn(datas, torch.eq(masks, False), fill_value)
+        return new_datas
+
 
     def get_new_data(self, del_p, typ):
         """
         returns masked data
         del_p: delete percentages
         typ: whether is train or test
-
-        if `self.reduce_color_dim` option is not None:
-            recude all channel dimention to 1
         """
-        datas = torch.load(str(self.sv_attr_path / f"{self.data_type}-{typ}.data"))
-        masks = torch.load(str(self.sv_attr_path / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))
-        new_datas = datas.masked_fill(masks, 0.0)
+        datas = torch.load(str(self.sv_masks_datas / f"{self.data_type}-{typ}.data")) # (B, C, H, W) ByteTensor
+        masks = torch.load(str(self.sv_masks_datas / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))  # (B, C, H, W) BoolTensor
+        new_datas = self.fill_datas_by_masks(datas, masks)
         # B, C, H, W = datas.size()
         if self.data_type.lower() == "mnist":
             # datatype: torch.unit8, datashape: (B, H, W)
@@ -332,13 +378,10 @@ class ModelTranier(XaiTrainer):
         model = model_class()
         model.load_state_dict(torch.load(load_path, map_location="cpu"))
         attr_model = attr_class(model, **attr_kwargs)
-        return model, attr_model
+        return attr_model
 
-    def evaluation(self, args, attr_model, del_p):
+    def recreate_data_loader(self, args, attr_model, del_p):
         train_dataset, test_dataset, *_ = self.build_dataset(args, shuffle=False)
-        # self.get_masks(args, train_loader, attr_model, del_p, typ="train")
-        # self.get_masks(args, test_loader, attr_model, del_p, typ="test")
-
         train_dataset.data = self.get_new_data(del_p, typ="train")
         test_dataset.data = self.get_new_data(del_p, typ="test")
         # recreate new data loader
@@ -352,19 +395,19 @@ class ModelTranier(XaiTrainer):
             shuffle=True)
         return train_loader, test_loader
 
-    def roar(self, args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs):
+    def evaluation(self, args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs):
         # after deletion retrain
-        model, attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
-        train_loader, test_loader = self.evaluation(args, attr_model, del_p)
+        attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
+        train_loader, test_loader = self.recreate_data_loader(args, attr_model, del_p)
         # start to retrain model
         print("[Alert] Start Retraining")
+        # 2020.01.20 10:00 don't use transferd model when retrain, this may cause your test accuracy going up instead of going down.
+        # 2020.01.20 11:00 no... it still goes up...
+        model = model_class()  
         model = model.to(device)
         best_acc = self.main_train(model, train_loader, test_loader, args.n_step, sv_path, device)
         
         return best_acc
-
-    def selectivity(self, args, model_class, attr_class, del_p, sv_path, load_path, device):
-        raise NotImplementedError
 
     def record_result(self, record_path, create=False, **kwargs):
         if create:
@@ -385,30 +428,27 @@ class ModelTranier(XaiTrainer):
         if pre_kwargs is not None:
             kwargs = pre_kwargs.get(m_type)
         else:
-            kwargs = {"<none>": None}
+            kwargs = self.default_kwargs
         return kwargs
 
     def first_train(self, args, device):
         best_acc_dict = OrderedDict()
-        
         for m_type in self.model_type:
             self.m_type = m_type
             print(f"[Training {m_type}] manual_seed={self.seed}\n")
             # select a model class
             model_class = self.model_dict[args.data_type][m_type]
             # first training
-            sv_path = str(self.sv_attr_path/f"{m_type}-first.pt")
+            sv_path = str(self.sv_main_path /f"{m_type}-first.pt")
             train_dataset, test_dataset, train_loader, test_loader = self.build_dataset(args, shuffle=True)
             model = model_class()
             model = model.to(device)
             best_acc = self.main_train(model, train_loader, test_loader, args.n_step, sv_path, device)
             best_acc_dict[m_type] = best_acc
-        torch.save(best_acc_dict, str(self.sv_attr_path / "best_acc-first.dict"))
+        torch.save(best_acc_dict, str(self.sv_main_path / "best_acc-first.dict"))
 
-    def second_evaluation(self, args, device):
-        best_acc_dict = torch.load(self.sv_attr_path / "best_acc-first.dict")
-        delete_percentages = [round(x.item(), 2) for x in torch.arange(0.1, 1, 0.1)]
-        
+    def second_masking(self, args, device):
+        percentages = [round(x.item(), 2) for x in torch.arange(0.1, 1, 0.1)]
         print(f"[Alert] Creating Masks by deletion percentages")
         for m_type in self.model_type:
             self.m_type = m_type
@@ -418,14 +458,16 @@ class ModelTranier(XaiTrainer):
                 self.a_type = a_type
                 attr_class = self.attr_dict[a_type]
                 attr_kwargs = self.get_kwargs_to_attr_model(self.data_type, m_type, a_type)
-                load_path = str(self.sv_attr_path/f"{m_type}-first.pt")
-                _, attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
-                print(f"[Alert] {m_type} {a_type}")
+                load_path = str(self.sv_main_path /f"{m_type}-first.pt")
+                attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
+                print(f"[Alert] masking {m_type} {a_type}")
                 *_, train_loader, test_loader = self.build_dataset(args, shuffle=False, batch_size=512)
-                self.get_masks(args, train_loader, attr_model, delete_percentages, typ="train")
-                self.get_masks(args, test_loader, attr_model, delete_percentages, typ="test")
-                
+                self.get_masks(train_loader, attr_model, percentages, typ="train")
+                self.get_masks(test_loader, attr_model, percentages, typ="test")
 
+    def third_evaluation(self, args, device):
+        best_acc_dict = torch.load(self.sv_main_path / "best_acc-first.dict")
+        percentages = [round(x.item(), 2) for x in torch.arange(0.1, 1, 0.1)]         
         print(f"[Alert] Retraining by deletion percentages")
         for m_type in self.model_type:
             self.m_type = m_type
@@ -438,21 +480,20 @@ class ModelTranier(XaiTrainer):
                 # record the first trained result for the each attribution type begins
                 self.record_result(self.record_path, create=False, model_type=m_type, del_p=0.0,
                     attr_type=a_type, best_acc=first_best_acc)
-                load_path = str(self.sv_attr_path/f"{m_type}-first.pt")
+                load_path = str(self.sv_main_path /f"{m_type}-first.pt")
 
-                for del_p in delete_percentages:
+                for del_p in percentages:
                     print(f"[Alert] Training: {m_type}")
                     print(f"[Alert] Attribution type: {a_type} / Deletion of inputs: {del_p}")
                     # save path settings for each attribution, deleted percentages
-                    sv_path = str(self.sv_attr_path/f"{m_type}-{a_type}-{del_p}.pt")
-                    # start retraining
-                    if self.eval_type == "roar":
-                        best_acc = self.roar(args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs)
-                    elif self.eval_type == "selectivity":
-                        raise NotImplementedError
-                        # self.selectivity(args, model_class, attr_class, del_p, device)
+                    p_text = f"{m_type}-{a_type}-{del_p}"
+                    if self.fill_global_mean:
+                        p_text += "-fgm.pt"
                     else:
-                        raise NotImplementedError
+                        p_text += ".pt"
+                    sv_path = str(self.sv_attr_path / p_text)
+                    # start retraining
+                    best_acc = self.evaluation(args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs)
                     # record best model accruacy automatically
                     self.record_result(self.record_path, create=False, model_type=m_type, del_p=del_p,
                         attr_type=a_type, best_acc=best_acc)
@@ -477,16 +518,19 @@ class ModelTranier(XaiTrainer):
         self.attr_type = args.attr_type
         self.seed = args.seed
         self.reduce_color_dim = args.reduce_color_dim
+        self.fill_global_mean = args.fill_global_mean
         # path settings
         self.prj_path = Path(args.prj_path)
         
         self.sv_main_path = self.prj_path/"trained"/self.data_type
+        self.sv_masks_datas = self.sv_main_path / "masksdatas"
         self.record_main_path = self.prj_path/"trainlog"
+        # save all models.pt by deleteion/recover/selection : sv_main_path > eval_type > rcd
         if self.reduce_color_dim is not None:
             self.sv_attr_path = self.sv_main_path/self.eval_type/self.reduce_color_dim
         else:
-            self.sv_attr_path = self.sv_main_path/self.eval_type
-        for p in [self.sv_main_path, self.record_main_path, self.record_main_path, self.sv_attr_path]:
+            self.sv_attr_path = self.sv_main_path/self.eval_type/"plain"
+        for p in [self.sv_main_path, self.sv_masks_datas, self.record_main_path, self.record_main_path, self.sv_attr_path]:
             self.check_path_exist(p, directory=True)
         self.record_path = self.record_main_path/f"{args.record_file}.txt"
     
@@ -496,6 +540,8 @@ class ModelTranier(XaiTrainer):
 
         if not args.skip_first_train:
             self.first_train(args, device)
-        if not args.skip_second_eval:
+        if not args.skip_second_masking:
+            self.second_masking(args, device)
+        if not args.skip_third_eval:
             self.record_result(self.record_path, create=True)
-            self.second_evaluation(args, device)
+            self.third_evaluation(args, device)

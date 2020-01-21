@@ -150,7 +150,7 @@ class GlobalAttentionGate(nn.Module):
         - hypothesis: all hypothesis, list type contains N+1 of (B, 1, L) size Tensor
         
         returns:
-        - global_gates: (B, N+1)
+        - global_gates: (B, N)
         """
         global_gates = self.cal_global_gates(x)  # (B, N, 1)
         outputs = torch.cat(hypothesis, dim=1)  #(B, N, L)

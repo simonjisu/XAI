@@ -1,4 +1,4 @@
-from ..model import DeconvNet, GradCAM, VanillaGrad, InputGrad, GuidedGrad, LRP
+from ..model import DeconvNet, GradCAM, VanillaGrad, InputGrad, GuidedGrad, LRP, Random
 from pathlib import Path
 
 class XaiTrainer(object):
@@ -12,6 +12,7 @@ class XaiTrainer(object):
         - main
         """
         self.attr_dict = {
+            "random": Random,
             "deconv": DeconvNet, 
             "gradcam": GradCAM, 
             "guidedgrad": GuidedGrad, 

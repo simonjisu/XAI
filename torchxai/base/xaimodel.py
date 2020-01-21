@@ -78,3 +78,31 @@ class XaiModel(XaiBase):
                 idxes[l_name].append(int(idx))
 
         return idxes
+
+    def _normalization(self, tensor, norm_mode=0):
+        """only support 4d tensor"""
+        if norm_mode == 0:
+            return tensor
+        B, C, H, W = tensor.size()
+        # [Test] normalizing through all dim
+        # if C == 1:
+        #     tensor = tensor.view(B, -1)
+        # else:
+        #     tensor = tensor.view(B, C, -1)
+        tensor = tensor.view(B, -1)
+        t_min = tensor.min(dim=-1, keepdim=True)[0]
+        t_max = tensor.max(dim=-1, keepdim=True)[0]
+        t_mean = tensor.mean(dim=-1, keepdim=True)
+        t_std = tensor.std(dim=-1, keepdim=True)
+
+        if norm_mode == 1:
+            tensor -= t_min
+            tensor /= (t_max - t_min + 1e-10)
+        elif norm_mode == 2:
+            tensor -= t_min
+            tensor *= 2
+            tensor /= (t_max - t_min + 1e-10)
+        elif norm_mode == 3:
+            tensor -= t_mean
+            tensor /= t_std
+        return (tensor.view(B, C, H, W) * 255).byte()

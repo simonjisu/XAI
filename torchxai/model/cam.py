@@ -3,6 +3,8 @@ __author__ = "simonjisu"
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image
+import numpy as np
 from ..base import XaiModel, XaiHook
 
 class GradCAM(XaiModel):
@@ -54,30 +56,23 @@ class GradCAM(XaiModel):
         https://pytorch.org/docs/stable/nn.functional.html#interpolate
         """
         gradcam = F.interpolate(gradcam, size=(H, W), mode="bilinear", align_corners=False)
-        gradcam = self.normalization(gradcam)
+        gradcam = self._normalization(gradcam, self.norm_mode).detach()  # (B, 1, H, W) ByteTensor
+        # convert 1 channel to 3 channel rgb, maybe not quite right
+        if self.origin_C != gradcam.size(1):
+            get_img = lambda x: Image.fromarray(np.uint8(x.squeeze(0).numpy()))
+            all_gradcams = []
+            *_, H, W = gradcam.size()
+            for batch in gradcam:  # (1, H, W)
+                temp = get_img(batch)  # PIL Image class (H, W)
+                rgbimg = Image.new("RGB", (H, W))
+                rgbimg.paste(temp)  # (H, W, C)
+                all_gradcams.append(torch.ByteTensor(np.array(rgbimg)).permute(2, 0, 1))
+            gradcam = torch.stack(all_gradcams, dim=0)
         return gradcam
-    
-    def normalization(self, tensor):
-        B, C, H, W = tensor.size()
-        tensor = tensor.view(B, -1)
-        t_min = tensor.min(dim=1, keepdim=True)[0]
-        t_max = tensor.max(dim=1, keepdim=True)[0]
-        t_mean = tensor.mean(dim=1, keepdim=True)
-        t_std = tensor.std(dim=1, keepdim=True)
-        if self.norm_mode == 1:
-            tensor -= t_min
-            tensor /= (t_max - t_min + 1e-10)
-        elif self.norm_mode == 2:
-            tensor -= t_min
-            tensor *= 2
-            tensor /= (t_max - t_min + 1e-10)
-        elif self.norm_mode == 3:
-            tensor -= t_mean
-            tensor /= t_std
-        return tensor.view(B, C, H, W)
-        
+
     def get_attribution(self, x, targets, key=None):
-        *_, H, W = x.size()
+
+        _, self.origin_C, H, W = x.size()
         if key is None:
             key = 0
         self.model.zero_grad()

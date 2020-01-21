@@ -7,8 +7,9 @@ from collections import OrderedDict, defaultdict
 
 class DeconvNet(XaiModel):
     """DeconvNet"""
-    def __init__(self, model, module_name="convs"):
+    def __init__(self, model, module_name="convs", norm_mode=0):
         super(DeconvNet, self).__init__(model)
+        self.norm_mode = norm_mode
         layer_names = ["conv2d", "maxpool2d"]
         self.module_name = module_name
         self.deconvs_indices = self.find_idxes(module_name, layer_names)
@@ -114,4 +115,6 @@ class DeconvNet(XaiModel):
                 x = layer(x)
         self._return_indices(convs, on=False)
         x_ret = x.clone().detach().data
+        if self.norm_mode:
+            self._normalization(x_ret, norm_mode=self.norm_mode)
         return x_ret

@@ -328,7 +328,7 @@ class relMaxPool2d(XaiHook):
 
 class LRP(XaiModel):
     """LRP"""
-    def __init__(self, model, use_rho=False):
+    def __init__(self, model, use_rho=False, norm_mode=1):
         """
         module_names: have to be sequential to forward network 
         """
@@ -372,4 +372,6 @@ class LRP(XaiModel):
         output.backward(grad)
         x_grad = x.grad.data.clone().detach()
         x.requires_grad_(requires_grad=False)
+        if self.norm_mode:
+            x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad
