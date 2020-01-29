@@ -57,7 +57,7 @@ class ModelTranier(XaiTrainer):
         }
 
         # give some arguments to attribution models
-        self.default_kwargs = dict(norm_mode=1)
+        self.default_kwargs = dict(abs_grad=True, norm_mode=1)
         # self.default_kwargs = {"<none>": None}
         self.kwargs_packs = {
             "mnist": {
@@ -68,10 +68,10 @@ class ModelTranier(XaiTrainer):
                     "resnetanr": dict(layers_name="relu_last", norm_mode=1)
                 },
                 "guidedgrad": {
-                    "cnn": dict(act=nn.ReLU, norm_mode=1),
-                    "resnet": dict(act=nn.ReLU, norm_mode=1),
-                    "resnetcbam": dict(act=nn.ReLU, norm_mode=1),
-                    "resnetanr": dict(act=nn.ReLU, norm_mode=1)
+                    "cnn": dict(act=nn.ReLU, abs_grad=True, norm_mode=1),
+                    "resnet": dict(act=nn.ReLU, abs_grad=True, norm_mode=1),
+                    "resnetcbam": dict(act=nn.ReLU, abs_grad=True, norm_mode=1),
+                    "resnetanr": dict(act=nn.ReLU, abs_grad=True, norm_mode=1)
                 },
                 "relavance": {
                     "cnn": dict(use_rho=False, norm_mode=1)
@@ -91,9 +91,9 @@ class ModelTranier(XaiTrainer):
                     "resnetanr": dict(layers_name="relu_last", norm_mode=1)
                 },
                 "guidedgrad": {
-                    "resnet": dict(act=nn.ReLU, norm_mode=1),
-                    "resnetcbam": dict(act=nn.ReLU, norm_mode=1),
-                    "resnetanr": dict(act=nn.ReLU, norm_mode=1)
+                    "resnet": dict(act=nn.ReLU, abs_grad=True, norm_mode=1),
+                    "resnetcbam": dict(act=nn.ReLU, abs_grad=True, norm_mode=1),
+                    "resnetanr": dict(act=nn.ReLU, abs_grad=True, norm_mode=1)
                 },
                 "vanillagrad": None,
                 "inputgrad": None,
@@ -328,7 +328,11 @@ class ModelTranier(XaiTrainer):
                           total=len(percentages)):
             all_masks = self.calculate_masks(all_attributions, del_p)
             # importance ranking masks by percentages, always descending option!!!
-            torch.save(all_masks, str(self.sv_masks_datas / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))
+            p_text = f"{self.m_type}-{self.a_type}-{typ}"
+            # if self.a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+            #     p_text += "-noabs"
+            p_text += f"-{del_p}.masks"
+            torch.save(all_masks, str(self.sv_masks_datas / p_text))
 
     def fill_datas_by_masks(self, datas, masks):
         """
@@ -360,8 +364,13 @@ class ModelTranier(XaiTrainer):
         del_p: delete percentages
         typ: whether is train or test
         """
+
+        p_text = f"{self.m_type}-{self.a_type}-{typ}"
+        # if self.a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+        #     p_text += "-noabs"
+        p_text += f"-{del_p}.masks"
         datas = torch.load(str(self.sv_masks_datas / f"{self.data_type}-{typ}.data")) # (B, C, H, W) ByteTensor
-        masks = torch.load(str(self.sv_masks_datas / f"{self.m_type}-{self.a_type}-{typ}-{del_p}.masks"))  # (B, C, H, W) BoolTensor
+        masks = torch.load(str(self.sv_masks_datas / p_text ))  # (B, C, H, W) BoolTensor
         new_datas = self.fill_datas_by_masks(datas, masks)
         # B, C, H, W = datas.size()
         if self.data_type.lower() == "mnist":
@@ -403,6 +412,7 @@ class ModelTranier(XaiTrainer):
         print("[Alert] Start Retraining")
         # 2020.01.20 10:00 don't use transferd model when retrain, this may cause your test accuracy going up instead of going down.
         # 2020.01.20 11:00 no... it still goes up...
+        # 2020.01.24 15:10 i maybe the cause by negative gradient 
         model = model_class()  
         model = model.to(device)
         best_acc = self.main_train(model, train_loader, test_loader, args.n_step, sv_path, device)
@@ -458,6 +468,8 @@ class ModelTranier(XaiTrainer):
                 self.a_type = a_type
                 attr_class = self.attr_dict[a_type]
                 attr_kwargs = self.get_kwargs_to_attr_model(self.data_type, m_type, a_type)
+                if a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+                    attr_kwargs["abs_grad"] = False
                 load_path = str(self.sv_main_path /f"{m_type}-first.pt")
                 attr_model = self.create_attr_model(model_class, attr_class, load_path, attr_kwargs)
                 print(f"[Alert] masking {m_type} {a_type}")
@@ -477,6 +489,9 @@ class ModelTranier(XaiTrainer):
                 self.a_type = a_type
                 attr_class = self.attr_dict[a_type]  # select a attribution method class
                 attr_kwargs = self.get_kwargs_to_attr_model(self.data_type, m_type, a_type)  # kwargs to attribution model
+                # not to use absolute values to in gradient method
+                if a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+                    attr_kwargs["abs_grad"] = False
                 # record the first trained result for the each attribution type begins
                 self.record_result(self.record_path, create=False, model_type=m_type, del_p=0.0,
                     attr_type=a_type, best_acc=first_best_acc)
@@ -486,11 +501,12 @@ class ModelTranier(XaiTrainer):
                     print(f"[Alert] Training: {m_type}")
                     print(f"[Alert] Attribution type: {a_type} / Deletion of inputs: {del_p}")
                     # save path settings for each attribution, deleted percentages
-                    p_text = f"{m_type}-{a_type}-{del_p}"
+                    p_text = f"{m_type}-{a_type}"
+                    # if self.no_abs_grad:
+                    #     p_text += "-noabs"
                     if self.fill_global_mean:
-                        p_text += "-fgm.pt"
-                    else:
-                        p_text += ".pt"
+                        p_text += "-fgm"
+                    p_text += f"-{del_p}.pt"
                     sv_path = str(self.sv_attr_path / p_text)
                     # start retraining
                     best_acc = self.evaluation(args, model_class, attr_class, del_p, sv_path, load_path, device, attr_kwargs)
@@ -519,6 +535,7 @@ class ModelTranier(XaiTrainer):
         self.seed = args.seed
         self.reduce_color_dim = args.reduce_color_dim
         self.fill_global_mean = args.fill_global_mean
+        self.no_abs_grad = args.no_abs_grad
         # path settings
         self.prj_path = Path(args.prj_path)
         
@@ -530,6 +547,9 @@ class ModelTranier(XaiTrainer):
             self.sv_attr_path = self.sv_main_path/self.eval_type/self.reduce_color_dim
         else:
             self.sv_attr_path = self.sv_main_path/self.eval_type/"plain"
+        if self.no_abs_grad:
+            self.sv_attr_path = self.sv_attr_path/"noabs"
+            self.sv_masks_datas = self.sv_masks_datas/"noabs"
         for p in [self.sv_main_path, self.sv_masks_datas, self.record_main_path, self.record_main_path, self.sv_attr_path]:
             self.check_path_exist(p, directory=True)
         self.record_path = self.record_main_path/f"{args.record_file}.txt"

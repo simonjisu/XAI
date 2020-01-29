@@ -6,7 +6,7 @@ from ..base import XaiModel
 
 class Random(XaiModel):
     """VanillaGrad"""
-    def __init__(self, model, norm_mode=1):
+    def __init__(self, model, norm_mode=1, abs_grad=False):
         super(Random, self).__init__(model)
         self.norm_mode = 1
         

@@ -35,35 +35,16 @@ $ voila Tutorial-01-XAI-Introduction.ipynb
 ```
 
 after this go to browser http://localhost:8866
-please visit http://soopace.com:13845 to see what's going on(open for 01.21~01.30)
+please visit http://soopace.com:13845 to see what's going on(open for ~01.31)
 
 * avaliable contents: Tutorial-02
 
 ### 3. training from scratch
 
+* (waiting for update)
+
 ## Project Process
 
 What is going on this project? Please see `Project Process`!
 * Project Process: [Project Page](https://github.com/simonjisu/XAI/projects/1)
-* How to Use(Building)
-
-#!/bin/bash
-if [ "$1" = "run" ] && [ "$2" = "notebook" ]
-then
-        echo "jupyter notebook start"
-        nohup jupyter notebook &
-elif [ "$1" = "run" ] && [ "$2" = "lab" ]
-then
-        echo "jupyter lab start"
-        nohup jupyter lab &
-elif [ "$1" = "stop" ] && [ "$2" = "notebook" ]
-then
-	pkill -9 -ef jupyter-notebook
-	echo "jupyter notebook stop"
-elif [ "$1" = "stop" ] && [ "$2" = "lab" ]
-then
-	pkill -9 -ef jupyter-lab
-	echo "jupyter lab stop"
-else
-        echo "insert args: 1) run / stop 2) notebook / lab"
-fi
+* How to Use(waiting for update)

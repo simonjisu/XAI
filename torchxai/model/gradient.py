@@ -6,9 +6,10 @@ from ..base import XaiModel, XaiHook
 
 class VanillaGrad(XaiModel):
     """VanillaGrad"""
-    def __init__(self, model, norm_mode=1):
+    def __init__(self, model, abs_grad=True, norm_mode=1):
         super(VanillaGrad, self).__init__(model)
         self.norm_mode = norm_mode
+        self.abs_grad = abs_grad
         
     def get_attribution(self, x, targets):
         """vanilla gradient"""
@@ -19,6 +20,8 @@ class VanillaGrad(XaiModel):
         output.backward(grad)
         x_grad = x.grad.data.clone()
         x.requires_grad_(requires_grad=False)
+        if self.abs_grad:
+            x_grad = torch.abs(x_grad)
         if self.norm_mode:
             x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad
@@ -26,9 +29,10 @@ class VanillaGrad(XaiModel):
 
 class InputGrad(XaiModel):
     """InputGrad"""
-    def __init__(self, model, norm_mode=1):
+    def __init__(self, model, abs_grad=True, norm_mode=1):
         super(InputGrad, self).__init__(model)
         self.norm_mode = norm_mode
+        self.abs_grad = abs_grad
         
     def get_attribution(self, x, targets):
         """vanilla gradient*input"""
@@ -40,6 +44,8 @@ class InputGrad(XaiModel):
         x_grad = x.grad.data.clone()
         x.requires_grad_(requires_grad=False)
         x_grad = x_grad * x.data
+        if self.abs_grad:
+            x_grad = torch.abs(x_grad)
         if self.norm_mode:
             x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad
@@ -66,12 +72,13 @@ class GuidedReLU(XaiHook):
 
 class GuidedGrad(XaiModel):
     """GuidedGrad"""
-    def __init__(self, model, act=nn.ReLU, norm_mode=1):
+    def __init__(self, model, act=nn.ReLU, abs_grad=True, norm_mode=1):
         """
         """
         super(GuidedGrad, self).__init__(model)
         self.act = act
         self.norm_mode = norm_mode
+        self.abs_grad = abs_grad
         self.act_dict = {
             nn.ReLU: GuidedReLU
         }
@@ -101,6 +108,8 @@ class GuidedGrad(XaiModel):
         output.backward(grad)
         x_grad = x.grad.data.clone()
         x.requires_grad_(False)
+        if self.abs_grad:
+            x_grad = torch.abs(x_grad)
         if self.norm_mode:
             x_grad = self._normalization(x_grad, norm_mode=self.norm_mode)
         return x_grad

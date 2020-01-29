@@ -13,84 +13,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def get_parser(data_type, option):
-    args_dict = {
-        "mnist": {
-            "roar": mnist_roar,
-            "kar": mnist_kar
-        },
-        "cifar10": {
-            "roar": cifar10_roar,
-            "kar-rcd": None,
-            "roar-rcd": cifar10_roar_rcd,
-            "roar-rcd-fgm": cifar10_roar_rcd_fgm,
-        }
-    }
-    parser = argument_parsing(preparse=True)
-    return parser.parse_args(args_dict[data_type][option])
-
-mnist_roar= \
-"""-pp  ../XAI
--dp  ../data
--rf  mnist-resnetsmall-roar-eval
--dt  mnist
--et  roar
--at  random  vanillagrad  inputgrad  guidedgrad  gradcam
--mt  resnet  resnetcbam  resnetanr
--bs  256
--ns  10
--down""".replace("\n", "  ").split("  ")
-
-mnist_kar = \
-"""-pp  ../XAI
--dp  ../data
--rf  mnist-resnetsmall-kar-eval
--dt  mnist
--et  kar
--at  random  vanillagrad  inputgrad  guidedgrad  gradcam
--mt  resnet  resnetcbam  resnetanr
--bs  256
--ns  10
--down""".replace("\n", "  ").split("  ")
-
-cifar10_roar = \
-"""-pp  ../XAI
--dp  ../data
--rf  cifar10-resnetsmall-roar-eval
--dt  cifar10
--et  roar
--at  random  vanillagrad  inputgrad  guidedgrad  gradcam
--mt  resnet  resnetcbam  resnetanr
--bs  256
--ns  30
--down""".replace("\n", "  ").split("  ")
-
-cifar10_roar_rcd = \
-"""-pp  ../XAI
--dp  ../data
--rf  cifar10-resnetsmall-roar-rcd-eval
--dt  cifar10
--et  roar
--at  random  vanillagrad  inputgrad  guidedgrad  gradcam
--mt  resnet  resnetcbam  resnetanr
--rcd  itu_r_bt2100
--bs  256
--ns  30
--down""".replace("\n", "  ").split("  ")
-
-cifar10_roar_rcd_fgm = \
-"""-pp  ../XAI
--dp  ../data
--rf  cifar10-resnetsmall-roar-rcd-fgm-eval
--dt  cifar10
--et  roar
--at  random  vanillagrad  inputgrad  guidedgrad  gradcam
--mt  resnet  resnetcbam  resnetanr
--rcd  itu_r_bt2100
--bs  256
--ns  30
--down""".replace("\n", "  ").split("  ")
-
 def argument_parsing(preparse=False):
     parser = argparse.ArgumentParser(description="Argparser",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -123,6 +45,9 @@ def argument_parsing(preparse=False):
     parser.add_argument("-rcd", "--reduce_color_dim", type=str, default=None,
                    help="Reduce the color channel of dimension in the attribution maps by following methods.\
                         Methods: mean, rec601, itu_r_bt707, itu_r_bt2100")
+    parser.add_argument("-noabs","--no_abs_grad", action="store_true",
+                   help="when using gradient method, not to get absolute values of the attributions")
+
     # training
     parser.add_argument("-down","--download", action="store_true",
                    help="Whether to download the data")
@@ -157,18 +82,21 @@ class Explorer(ModelTranier):
         # string
         self.data_type = args.data_type
         self.eval_type = args.eval_type
+        # bool
         self.reduce_color_dim = args.reduce_color_dim
         self.fill_global_mean = args.fill_global_mean
+        self.no_abs_grad = args.no_abs_grad
         # path settings
         self.prj_path = Path(args.prj_path)
         self.sv_main_path = self.prj_path/"trained"/self.data_type
-        self.sv_masks_datas = self.sv_main_path / "masksdatas"
         self.record_main_path = self.prj_path/"trainlog"
         if self.reduce_color_dim is not None:
             self.sv_attr_path = self.sv_main_path/self.eval_type/self.reduce_color_dim
         else:
             self.sv_attr_path = self.sv_main_path/self.eval_type/"plain"
-        self.record_path = self.record_main_path/f"{args.record_file}.txt"
+        if self.no_abs_grad:
+            self.sv_attr_path = self.sv_attr_path/"noabs"
+        self.record_path = self.record_main_path/f"{args.record_file}.txt" 
         
         _, self.test_dataset, *_ = self.build_dataset(args)
         self.img_dict, self.idx_to_class = self.build_img_dict(self.test_dataset)
@@ -226,12 +154,20 @@ class Explorer(ModelTranier):
         m_class = self.model_dict[self.data_type][m_type]
         a_class = self.attr_dict[a_type]
         a_kwargs = self.get_kwargs_to_attr_model(self.data_type, m_type, a_type)
+        if a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+            a_kwargs["abs_grad"] = False
         if del_p is None:
             load_path = str(self.sv_main_path/f"{m_type}-first.pt")
             attr_model = self.create_attr_model(m_class, a_class, load_path, a_kwargs)
             return attr_model
         else:
-            load_path = str(self.sv_attr_path/f"{m_type}-{a_type}-{del_p}.pt")
+            p_text = f"{m_type}-{a_type}"
+            if a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
+                p_text += "-noabs"
+            if self.fill_global_mean:
+                p_text += "-fgm"
+            p_text += f"-{del_p}.pt"
+            load_path = str(self.sv_attr_path/p_text)
             model = m_class().eval()
             model.load_state_dict(torch.load(load_path, map_location="cpu"))
             return model
@@ -472,18 +408,20 @@ class Explorer(ModelTranier):
         percentages = np.arange(0, 100, 10).astype(np.float16)
 
         cmap = plt.get_cmap('tab20')
-        colors = [cmap(i) for i in np.arange(len(s_dict.keys()))]
+        colors = [cmap(i) for i in np.arange(len(set(a_type)))]
         fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+        
         for i, (k, v) in enumerate(s_dict.items()):
             m, a = k.split("-")
+            color_idx = i % len(set(a_type))
             if m == "resnet":
-                axes[0].plot(percentages, np.array(v), label=a, color=colors[i], marker="o")
+                axes[0].plot(percentages, np.array(v), label=a, color=colors[color_idx], marker="o")
             elif m == "resnetcbam":
-                axes[1].plot(percentages, v, label=a, color=colors[i], marker="o")
+                axes[1].plot(percentages, v, label=a, color=colors[color_idx], marker="o")
             else:
-                axes[2].plot(percentages, v, label=a, color=colors[i], marker="o")
-
-        for ax, title in zip(axes, set(m_type)):
+                axes[2].plot(percentages, v, label=a, color=colors[color_idx], marker="o")
+        titles = ["resnet", "resnetcbam", "resnetanr"]
+        for ax, title in zip(axes, titles):
             ax.grid(True)
             if self.data_type == "mnist":
                 ax.set_yticks(np.arange(40.0, 110.0, 10))
@@ -496,4 +434,6 @@ class Explorer(ModelTranier):
                 ax.set_xlabel("% of recover")
             ax.set_title(title, fontsize=16)
             ax.legend()
+        suptitle = self.record_path.name.split(".")[0]
+        fig.suptitle(suptitle, fontsize=20, y=0.05)
         plt.show()

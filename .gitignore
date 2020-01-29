@@ -6,3 +6,6 @@ __pycache__
 .vscode
 *.log
 trained/*
+cifar10-eval.sh
+cifar10-train.sh
+mnist-eval.sh
