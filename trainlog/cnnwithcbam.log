@@ -1,9 +1,0 @@
-Namespace(attr_type=['vanillagrad', 'inputgrad', 'guidedgrad', 'gradcam'], batch_size=256, data_path='/home/simonjisu/code/data', data_type='cifar10', download=True, eval_type='roar', model_type=['cnnwithcbam'], n_step=15, prj_path='/home/simonjisu/code/XAI', rcd=None, record_file='cnn-roar-cifar10', seed=73, use_cuda=True, verbose=0)
-Given path doesn't exists, created /home/simonjisu/code/XAI/trained/cifar10
-Given path doesn't exists, created /home/simonjisu/code/XAI/trainlog/cnn-roar-cifar10.txt
-Traceback (most recent call last):
-  File "main.py", line 13, in <module>
-    trainer.main(args)
-  File "/home/simonjisu/code/XAI/models/trainsettings.py", line 314, in main
-    model_class = self.model_dict[args.data_type][m_type]
-KeyError: 'cifar10'

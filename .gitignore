@@ -1,5 +1,11 @@
 .ipynb_checkpoints
 __pycache__
-trained
+*.masks
+*.data
+*.dict
 .vscode
-studynotebook.ipynb
+*.log
+trained/*
+cifar10-temp.sh
+testnotebook/*
+weights/*
