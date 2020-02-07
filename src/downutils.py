@@ -1,4 +1,5 @@
 import requests
+import argparse
 
 def download_file_from_google_drive(id, destination):
     URL = "https://docs.google.com/uc?export=download"
@@ -35,7 +36,7 @@ if __name__ == "__main__":
 
     # Path Settings
     parser.add_argument("-to", "--destination", type=str, required=True, help="destination")
-    parser.add_argument("-id", "--file_id", typ=str, required=True, help="file id")
+    parser.add_argument("-id", "--file_id", type=str, required=True, help="file id")
     args = parser.parse_args()
 
     file_id = args.file_id

@@ -27,7 +27,7 @@ class AttentionHead(nn.Module):
         """
         B = x.size(0)
         conv_heads = self.conv(x)  # (B, C, H, W) > (B, K, H, W)
-        masks = torch.softmax(conv_heads, dim=1)  # K-attention masks
+        masks = conv_heads.view(B, self.n_head, -1).softmax(-1).view_as(conv_heads)  # K-attention masks
         self.masks_score = masks.view(B, self.n_head, -1)
         return masks  # (B, K, H, W)
     

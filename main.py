@@ -3,7 +3,7 @@ __author__ = "simonjisu"
 from pathlib import Path
 import sys
 
-from src.utils import argument_parsing
+from src.parserutils import argument_parsing
 from src.trainsettings import ModelTranier
 
 if __name__ == "__main__":

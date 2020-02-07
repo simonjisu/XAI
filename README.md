@@ -1,9 +1,9 @@
-# XAI
+## XAI
 
 * eXplainable AI
 * AI college Recording Repo
 
-# Requirements
+## Requirements
 
 ```
 python >= 3.6.8 (not 3.7.* yet)
@@ -13,7 +13,7 @@ jupyter >= 1.0.0
 voila >= 0.1.20
 ```
 
-## run in local
+## Run in local
 
 ### 1. install requirements packages
 * [[pytorch]](https://pytorch.org/) install with your environments
@@ -26,25 +26,52 @@ voila >= 0.1.20
 
 ### 2. quick tutorial
 
-clone or fork this project at first, please ensure make a data directory to download mnist, cifar10 datas
-
+clone or fork this project at first, please ensure make a `data` directory to download mnist, cifar10 datas.
 ```
 $ cd [your directory]/XAI
 $ mkdir ../data
-$ voila Tutorial-01-XAI-Introduction.ipynb
+```
+
+and run following scripts to download all model weights(1.4GB), you can also download from [google drive](https://drive.google.com/file/d/1Av8B5gjKVL-vM-TvivKL1wNXmvaA4DMO/view?usp=sharing)
+
+```
+$ chmod 777 download-weight.sh
+$ ./download-weight.sh
+$ voila ./notebooks/Tutorial-01-XAI-Introduction.ipynb
 ```
 
 after this go to browser http://localhost:8866
-please visit http://soopace.com:13845 to see what's going on(open for ~01.31)
 
-* avaliable contents: Tutorial-02
+please visit http://app.soopace.com/ to see what's going on(open for ~02.25, not every time)
 
 ### 3. training from scratch
 
-* (waiting for update)
+you can also train from scratch if you want. You can choose 3rd argument in "experiments" by following:
+* 1: `plain` 
+* 2: `rcd`
+* 3: `rcd-fgm`
+* 4: `rcd-noabs`
+
+> options means:
+>    * `plain`: basic setting
+>    * `rcd`: gray scale for all attribution methods(means that recuding the color dimension to 1)
+>    * `fgm`: fill the masks with global mean of all datas instead of zeros.
+>    * `noabs`: not to absolute attribution scores in some methods
+
+```bash
+# 1: data-type
+# 2: eval-type
+# 3: experiments
+# 4: if you train the model first time(for each data-type), 
+#    ensure this variable to `true`
+$ sh fast-run $1 $2 $3 $4
+```
+
+## About using `torchxai` Module
+
+I'm updating "how to use".
 
 ## Project Process
 
 What is going on this project? Please see `Project Process`!
 * Project Process: [Project Page](https://github.com/simonjisu/XAI/projects/1)
-* How to Use(waiting for update)

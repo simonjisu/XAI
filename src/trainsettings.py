@@ -329,8 +329,6 @@ class ModelTranier(XaiTrainer):
             all_masks = self.calculate_masks(all_attributions, del_p)
             # importance ranking masks by percentages, always descending option!!!
             p_text = f"{self.m_type}-{self.a_type}-{typ}"
-            # if self.a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
-            #     p_text += "-noabs"
             p_text += f"-{del_p}.masks"
             torch.save(all_masks, str(self.sv_masks_datas / p_text))
 
@@ -364,10 +362,7 @@ class ModelTranier(XaiTrainer):
         del_p: delete percentages
         typ: whether is train or test
         """
-
         p_text = f"{self.m_type}-{self.a_type}-{typ}"
-        # if self.a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
-        #     p_text += "-noabs"
         p_text += f"-{del_p}.masks"
         datas = torch.load(str(self.sv_masks_datas / f"{self.data_type}-{typ}.data")) # (B, C, H, W) ByteTensor
         masks = torch.load(str(self.sv_masks_datas / p_text ))  # (B, C, H, W) BoolTensor
@@ -502,8 +497,6 @@ class ModelTranier(XaiTrainer):
                     print(f"[Alert] Attribution type: {a_type} / Deletion of inputs: {del_p}")
                     # save path settings for each attribution, deleted percentages
                     p_text = f"{m_type}-{a_type}"
-                    # if self.no_abs_grad:
-                    #     p_text += "-noabs"
                     if self.fill_global_mean:
                         p_text += "-fgm"
                     p_text += f"-{del_p}.pt"

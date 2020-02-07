@@ -1,7 +1,6 @@
 __author__ = "simonjisu"
 
 from .trainsettings import ModelTranier
-import argparse
 import ipywidgets as widgets
 from pathlib import Path
 from collections import defaultdict
@@ -11,67 +10,6 @@ import torch.nn.functional as F
 from IPython.display import display
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-
-def argument_parsing(preparse=False):
-    parser = argparse.ArgumentParser(description="Argparser",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    # Path Settings
-    parser.add_argument("-pp", "--prj_path", required=True,
-                   help="Project Path: Insert your project dir path")
-    parser.add_argument("-dp", "--data_path", required=True,
-                   help="Data Path: Insert your project dir path")
-    parser.add_argument("-rf", "--record_file", type=str, default="rc",
-                help="Record directory Path: just insert the folder name,\
-                    record all metrics to a table,\
-                    it will automatically create under `prj_path`/trainlog/`record_file`.txt")
-    # types
-    parser.add_argument("-dt", "--data_type", type=str, default="mnist",
-                   help="Dataset type: mnist, cifar10")
-    parser.add_argument("-et", "--eval_type", type=str, default="roar",
-                   help="Dataset type: roar, selectivity")
-    parser.add_argument("-at", "--attr_type", nargs="+",
-                   help="Attribution Method Type: random, deconv, gradcam, guidedgrad, relavance, vanillagrad, inputgrad, guided_gradcam. \
-                        Insert at least one method, some attribution method will not be supported to some models. \
-                        example:`-at deconv gradcam`")
-    parser.add_argument("-mt", "--model_type", nargs="+",
-                   help="Model Type: cnn, resnet, resnetcbam, resnetanr \
-                        Insert at least one method, some attribution method will not be supported to some models. \
-                        example:`-mt resnet resnetcbam resentanr`")
-    # attribution details
-    parser.add_argument("-fgm","--fill_global_mean", action="store_true",
-                   help="Fill Global means to masked value if not will be replaced by zeros")
-    parser.add_argument("-rcd", "--reduce_color_dim", type=str, default=None,
-                   help="Reduce the color channel of dimension in the attribution maps by following methods.\
-                        Methods: mean, rec601, itu_r_bt707, itu_r_bt2100")
-    parser.add_argument("-noabs","--no_abs_grad", action="store_true",
-                   help="when using gradient method, not to get absolute values of the attributions")
-
-    # training
-    parser.add_argument("-down","--download", action="store_true",
-                   help="Whether to download the data")
-    parser.add_argument("-bs","--batch_size", type=int, default=128,
-                   help="Mini batch size")
-    parser.add_argument("-ns","--n_step", type=int, default=10,
-                   help="Total training step size")
-    parser.add_argument("-cuda","--use_cuda", action="store_true",
-                   help="Use Cuda")
-    parser.add_argument("-sd","--seed", type=int, default=73,
-                   help="Seed number")
-    parser.add_argument("-skip1","--skip_first_train", action="store_true",
-                   help="Skip first training")
-    parser.add_argument("-skip2","--skip_second_masking", action="store_true",
-                   help="Skip second masking")
-    parser.add_argument("-skip3","--skip_third_eval", action="store_true",
-                   help="Skip third evaluation")
-    
-    if preparse:
-        return parser
-    
-    args = parser.parse_args()
-    return args
-
 
 class Explorer(ModelTranier):
     def __init__(self, args):
@@ -101,10 +39,11 @@ class Explorer(ModelTranier):
         _, self.test_dataset, *_ = self.build_dataset(args)
         self.img_dict, self.idx_to_class = self.build_img_dict(self.test_dataset)
         # attenion options
+        self.no_attention = args.no_attention
         self.attention_dict_default = {"none": None}
         self.attention_dict = self.attention_dict_default
         self.attn_option = False
-        self.attn_c_max = 0
+        self.attn_c_max = 3
         self.cam_max = 3
         
     def build_img_dict(self, dataset):
@@ -162,8 +101,6 @@ class Explorer(ModelTranier):
             return attr_model
         else:
             p_text = f"{m_type}-{a_type}"
-            if a_type in ["vanillagrad", "inputgrad", "guidedgrad"] and self.no_abs_grad:
-                p_text += "-noabs"
             if self.fill_global_mean:
                 p_text += "-fgm"
             p_text += f"-{del_p}.pt"
@@ -240,32 +177,51 @@ class Explorer(ModelTranier):
         self.wg_del_p = widgets.FloatSlider(description='delete/recover %', value=10.0, min=10.0, 
                                             max=90.0, step=10.0, readout_format=".0f", style=style)
         self.wg_cam = widgets.IntSlider(description='GradCAM Idx', value=0, min=0, max=self.cam_max, style=style)
-        self.wg_attn = widgets.Dropdown(options=self.attention_dict.keys(), description='Attention:', disabled=False, style=style)
-        self.wg_attn_c = widgets.IntSlider(description='Channel Select', value=0, min=0, max=self.attn_c_max, style=style)
-        self.wg_reduce_dim = widgets.Checkbox(value=False, disabled=False, indent=False, style=style)
-        rcd_box = widgets.Box([widgets.Label("Reduce Channel dim: ", style=style, layout=widgets.Layout(width="250px")), 
-                            self.wg_reduce_dim], ayout=widgets.Layout(flex_flow="row", justify_content="flex-start"))
-
-        # m_type | index   | cam 
-        # a_type | del_p   | attn
-        # label  | rcd_box | attn_c
-        # Layout(flex='1 1 auto', width='auto')
         
-
-        left_box = widgets.VBox([self.wg_m_types, self.wg_a_types, self.wg_label], 
-                    layout=widgets.Layout(display='flex', flex_flow='column'))
-        middle_box = widgets.VBox([self.wg_index, self.wg_del_p, rcd_box], 
-                    layout=widgets.Layout(display='flex', flex_flow='column', width='320px'))
-        right_box = widgets.VBox([self.wg_cam, self.wg_attn, self.wg_attn_c], 
-                    layout=widgets.Layout(display='flex', flex_flow='column'))
-        form = widgets.HBox([left_box, middle_box, right_box], 
-            layout=widgets.Layout(display='inline-flex',flex_flow='row',border='solid 2px', justify_content='space-between'))
-        interactive_dict = {"m_type": self.wg_m_types, "a_type": self.wg_a_types, "label": self.wg_label, 
-                            "index": self.wg_index, "del_p": self.wg_del_p, "cam": self.wg_cam, 
-                            "attn": self.wg_attn, "attn_c": self.wg_attn_c}
+        if self.no_attention:
+            # no attention version
+            # m_type | index   
+            # a_type | del_p
+            # label  | cam 
+            left_box = widgets.VBox([self.wg_m_types, self.wg_a_types, self.wg_label], 
+                        layout=widgets.Layout(display='flex', flex_flow='column'))
+            right_box = widgets.VBox([self.wg_index, self.wg_del_p, self.wg_cam], 
+                        layout=widgets.Layout(display='flex', flex_flow='column'))
+            form = widgets.HBox([left_box, right_box], 
+                layout=widgets.Layout(display='inline-flex',flex_flow='row',border='solid 2px', justify_content='space-between'))
+            interactive_dict = {"m_type": self.wg_m_types, "a_type": self.wg_a_types, "label": self.wg_label, 
+                                "index": self.wg_index, "del_p": self.wg_del_p, "cam": self.wg_cam}
+        else:
+            self.wg_attn = widgets.Dropdown(options=self.attention_dict.keys(), description='Attention:', disabled=False, style=style)
+            self.wg_attn_c = widgets.IntSlider(description='Channel Select', value=0, min=0, max=self.attn_c_max, style=style)
+            self.wg_reduce_dim = widgets.Checkbox(value=False, disabled=False, indent=False, style=style)
+            rcd_box = widgets.Box([widgets.Label("Reduce Channel dim: ", style=style, layout=widgets.Layout(width="250px")), 
+                                self.wg_reduce_dim], ayout=widgets.Layout(flex_flow="row", justify_content="flex-start"))
+            dl = widgets.dlink((self.wg_reduce_dim, 'value'), (self.wg_attn_c, 'value'))
+            # attention version
+            # m_type | index   | cam 
+            # a_type | del_p   | attn
+            # label  | rcd_box | attn_c
+            left_box = widgets.VBox([self.wg_m_types, self.wg_a_types, self.wg_label], 
+                        layout=widgets.Layout(display='flex', flex_flow='column'))
+            middle_box = widgets.VBox([self.wg_index, self.wg_del_p, rcd_box], 
+                        layout=widgets.Layout(display='flex', flex_flow='column', width='320px'))
+            right_box = widgets.VBox([self.wg_cam, self.wg_attn, self.wg_attn_c], 
+                        layout=widgets.Layout(display='flex', flex_flow='column'))
+            form = widgets.HBox([left_box, middle_box, right_box], 
+                layout=widgets.Layout(display='inline-flex',flex_flow='row',border='solid 2px', justify_content='space-between'))
+            interactive_dict = {"m_type": self.wg_m_types, "a_type": self.wg_a_types, "label": self.wg_label, 
+                                "index": self.wg_index, "del_p": self.wg_del_p, "cam": self.wg_cam, 
+                                "attn": self.wg_attn, "attn_c": self.wg_attn_c}
         return form, interactive_dict
         
-    def draw_img(self, m_type, a_type, label, index, del_p, cam, attn, attn_c):
+    # def draw_img(self, m_type, a_type, label, index, del_p, cam, attn, attn_c):
+    def draw_img(self, **kwargs):
+        if self.no_attention:
+            m_type, a_type, label, index, del_p, cam = kwargs.values()
+        else:
+            m_type, a_type, label, index, del_p, cam, attn, attn_c = kwargs.values()
+
         label = self.class_to_idx[label]
         del_p /= 100
         img = self.img_dict[label]["imgs"][index]
@@ -277,7 +233,7 @@ class Explorer(ModelTranier):
         fig_ax1.imshow(img)
 
         fig_ax2 = fig.add_subplot(142)
-        im = fig_ax2.imshow(attribution, cmap="rainbow")
+        im = fig_ax2.imshow(attribution, cmap="rainbow", vmin=0, vmax=255)
         divider = make_axes_locatable(fig_ax2)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         fig.colorbar(im, cax=cax)
@@ -294,102 +250,97 @@ class Explorer(ModelTranier):
             ax.set_title(title)
             ax.axis("off")
         
-        # draw attention
-        fig2 = plt.figure(figsize=(14, 5), constrained_layout=False)
-        if self.attention_dict.get(attn) is not None:            
-            if "cbam" in m_type:
-                gs = fig2.add_gridspec(nrows=3, ncols=6, hspace=0.1, wspace=0.4)
-                f2_ax1 = fig2.add_subplot(gs[0, :])
-                f2_ax2 = fig2.add_subplot(gs[1:, :2])
-                f2_ax3 = fig2.add_subplot(gs[1:, 2:4])
-                f2_ax4 = fig2.add_subplot(gs[1:, 4:6])
+        if not self.no_attention:
+            # draw attention
+            fig2 = plt.figure(figsize=(14, 5), constrained_layout=False)
+            if self.attention_dict.get(attn) is not None:            
+                if "cbam" in m_type:
+                    gs = fig2.add_gridspec(nrows=3, ncols=6, hspace=0.1, wspace=0.4)
+                    f2_ax1 = fig2.add_subplot(gs[0, :])
+                    f2_ax2 = fig2.add_subplot(gs[1:, :2])
+                    f2_ax3 = fig2.add_subplot(gs[1:, 2:4])
+                    f2_ax4 = fig2.add_subplot(gs[1:, 4:6])
 
-                # c_attn: (1, C, 1, 1), s_attn: (1, 1, H, W), out_attn: (1, C, H, W)
-                c_attn, s_attn, out_attn = self.attention_dict.get(attn)
-                s_attn_interpolated = F.interpolate(s_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
-            
-                im1 = f2_ax1.matshow(c_attn.squeeze().unsqueeze(0), cmap="rainbow")
-                f2_ax1.yaxis.set_visible(False)
-                f2_ax1.xaxis.set_ticks_position('bottom')
-                f2_ax1.set_title(f"Channel Attentions (Total: {c_attn.size(1)})")
-                
-                im2 = f2_ax2.matshow(s_attn.squeeze(0).squeeze(0), cmap="rainbow")
-                f2_ax2.set_title(f"Spatial Attentions")
-                f2_ax2.xaxis.set_ticks_position('bottom')
-                
-                f2_ax3.imshow(img)
-                f2_ax3.matshow(s_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
-                f2_ax3.set_title(f"Spatial Attentions(Interpolated)")
-                f2_ax3.axis("off")
-                
-                if self.wg_reduce_dim.value:
-                    self.wg_attn_c.max = 0
-                    self.wg_attn_c.set_trait("value", 0)
-                    t_out_attn = out_attn.mean(1).unsqueeze(1)  # (1, 1, H, W)
-                else:
-                    self.wg_attn_c.max = c_attn.size(1) - 1
-                    # self.wg_attn_c.set_trait("value", 0)
-                    s_idx = self.wg_attn_c.value
-                    t_out_attn = out_attn[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+                    # c_attn: (1, C, 1, 1), s_attn: (1, 1, H, W), out_attn: (1, C, H, W)
+                    c_attn, s_attn, out_attn = self.attention_dict.get(attn)
+                    s_attn_interpolated = F.interpolate(s_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+
+                    im1 = f2_ax1.matshow(c_attn.squeeze().unsqueeze(0), cmap="rainbow", vmin=0.0, vmax=1.0)
+                    f2_ax1.yaxis.set_visible(False)
+                    f2_ax1.xaxis.set_ticks_position('bottom')
+                    f2_ax1.set_title(f"Channel Attentions (Total: {c_attn.size(1)})")
                     
-                im4 = f2_ax4.matshow(t_out_attn.squeeze(0).squeeze(0), cmap="rainbow")
-                f2_ax4.set_title(f"Output after Attention")
-                f2_ax4.xaxis.set_ticks_position('bottom')
-                
-                all_ims = [im1, im2, im4]
-                all_axes = [f2_ax1, f2_ax2, f2_ax4]
-                for i, (im_color, ax_color) in enumerate(zip(all_ims, all_axes)):
-                    divider = make_axes_locatable(ax_color)
+                    im2 = f2_ax2.matshow(s_attn.squeeze(0).squeeze(0), cmap="rainbow", vmin=0.0, vmax=1.0)
+                    f2_ax2.set_title(f"Spatial Attentions")
+                    f2_ax2.xaxis.set_ticks_position('bottom')
+                    
+                    f2_ax3.imshow(img)
+                    f2_ax3.matshow(s_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
+                    f2_ax3.set_title(f"Spatial Attentions(Interpolated)")
+                    f2_ax3.axis("off")
+                    
+                    if self.wg_reduce_dim.value:
+                        self.wg_attn_c.max = 0
+                        self.wg_attn_c.set_trait("value", 0)
+                        t_out_attn = out_attn.mean(1).unsqueeze(1)  # (1, 1, H, W)
+                    else:
+                        self.wg_attn_c.max = c_attn.size(1) - 1
+                        # self.wg_attn_c.set_trait("value", 0)
+                        s_idx = self.wg_attn_c.value
+                        t_out_attn = out_attn[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+                        
+                    im4 = f2_ax4.matshow(t_out_attn.squeeze(0).squeeze(0), cmap="rainbow")
+                    f2_ax4.set_title(f"Output after Attention")
+                    f2_ax4.xaxis.set_ticks_position('bottom')
+                    
+                    all_ims = [im1, im2, im4]
+                    all_axes = [f2_ax1, f2_ax2, f2_ax4]
+                    for i, (im_color, ax_color) in enumerate(zip(all_ims, all_axes)):
+                        divider = make_axes_locatable(ax_color)
+                        cax = divider.append_axes("right", size="5%", pad=0.05)
+                        fig2.colorbar(im_color, cax=cax)
+                    
+                elif "anr" in m_type:
+                    gs = fig2.add_gridspec(nrows=1, ncols=2, wspace=0.5, left=0.02, right=0.7)
+                    f2_ax1 = fig2.add_subplot(gs[0, 0])
+                    f2_ax2 = fig2.add_subplot(gs[0, 1])
+
+                    attn_tensor = self.attention_dict.get(attn).detach()  # (1, C, H, W)
+                    if self.wg_reduce_dim.value:
+                        self.wg_attn_c.max = 0
+                        self.wg_attn_c.set_trait("value", 0)
+                        t_attn = torch.exp(attn_tensor)  # (1, K, H, W)
+                        t_attn = t_attn.mean(1, keepdim=True)  # (1, 1, H, W)
+                        t_attn = t_attn.view(-1).softmax(-1).view_as(t_attn)
+                        # .max(1, keepdim=True)[0]  
+                        # *_, H_attn, W_attn = t_attn.size()
+                        # t_attn = t_attn.view(-1).view(1, 1, H_attn, W_attn)  
+                        t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                        sub_title = "Collapsed"
+                    else:
+                        self.wg_attn_c.max = attn_tensor.size(1) - 1
+                        s_idx = self.wg_attn_c.value
+                        t_attn = attn_tensor[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+                        # t_attn = torch.exp(t_attn)  # exp
+                        t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                        sub_title = ""
+                    
+                    im1 = f2_ax1.imshow(t_attn.squeeze(0).squeeze(0), cmap="rainbow")#, vmin=0.0, vmax=1.0)
+                    f2_ax1.set_title(f"Attention Head {sub_title}")
+                    f2_ax1.xaxis.set_ticks_position('bottom')
+                    divider = make_axes_locatable(f2_ax1)
                     cax = divider.append_axes("right", size="5%", pad=0.05)
-                    fig2.colorbar(im_color, cax=cax)
-                
-            elif "anr" in m_type:
+                    fig2.colorbar(im1, cax=cax)
+                    
+                    f2_ax2.imshow(img)
+                    f2_ax2.imshow(t_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
+                    f2_ax2.set_title(f"Attention Head {sub_title}(Interpolated)")
+                    f2_ax2.axis("off")
 
-                gs = fig2.add_gridspec(nrows=1, ncols=2, wspace=0.5, left=0.02, right=0.7)
-                f2_ax1 = fig2.add_subplot(gs[0, 0])
-                f2_ax2 = fig2.add_subplot(gs[0, 1])
-
-                attn_tensor = self.attention_dict.get(attn).detach()  # (1, C, H, W)
-                # TODO: Spatial attention 2020.1.20
-                # attention is calculated along the channel dimension 
-                # so must show attention weight by channel
-                # may plot like a 3 dim cube?
-                # -------------- fix ----------------
-                if self.wg_reduce_dim.value:
-                    self.wg_attn_c.max = 0
-                    self.wg_attn_c.set_trait("value", 0)
-                    t_attn = attn_tensor.mean(1).unsqueeze(1)  # (1, 1, H, W)
-                    t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
-                    sub_title = "Collapsed"
-                else:
-                    self.wg_attn_c.max = attn_tensor.size(1) - 1
-                    s_idx = self.wg_attn_c.value
-                    t_attn = attn_tensor[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
-                    t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
-                    sub_title = ""
-                
-                im1 = f2_ax1.imshow(t_attn.squeeze(0).squeeze(0), cmap="rainbow")
-                f2_ax1.set_title(f"Attention Head {sub_title}")
-                f2_ax1.xaxis.set_ticks_position('bottom')
-                divider = make_axes_locatable(f2_ax1)
-                cax = divider.append_axes("right", size="5%", pad=0.05)
-                fig2.colorbar(im1, cax=cax)
-                
-                f2_ax2.imshow(img)
-                f2_ax2.imshow(t_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
-                f2_ax2.set_title(f"Attention Head {sub_title}(Interpolated)")
-                f2_ax2.axis("off")
-                # -------------- fix ----------------
-                # all_ims = [im1, im2]
-                # all_axes = [f2_ax1, f2_ax2]
-                # for im_color, ax_color in zip(all_ims, all_axes):
-                #     divider = make_axes_locatable(ax_color)
-                #     cax = divider.append_axes("right", size="5%", pad=0.05)
-                #     fig2.colorbar(im_color, cax=cax)
-            plt.show()
-        else:
-            # self.wg_attn.set_trait("value", "none")
-            plt.close(fig2)
+                plt.show()
+            else:
+                # self.wg_attn.set_trait("value", "none")
+                plt.close(fig2)
             
     def show(self):
         form, interactive_dict = self.create_widgets()
@@ -399,6 +350,8 @@ class Explorer(ModelTranier):
     def show_eval(self):
         with self.record_path.open() as f:
             x = f.read().splitlines()[2:]
+            if self.no_attention:
+                x = [line for line in x if not (("resnetcbam" in line) or ("resnetanr" in line))]
             x = [line.strip("|").split("|") for line in x]
             m_type, a_type, percent, score = list(zip(*x))
             s_dict = defaultdict(list)
@@ -409,7 +362,14 @@ class Explorer(ModelTranier):
 
         cmap = plt.get_cmap('tab20')
         colors = [cmap(i) for i in np.arange(len(set(a_type)))]
-        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+        total_fig = 1 if self.no_attention else 3
+        figsize = (6, 6) if self.no_attention else (16, 5)
+        titles = ["resnet"] if self.no_attention else ["resnet", "resnetcbam", "resnetanr"] 
+
+        fig, axes = plt.subplots(1, total_fig, figsize=figsize)
+        axes = [axes] if self.no_attention else axes
+        suptitle = self.record_path.name.split(".")[0]
+        fig.suptitle(suptitle, fontsize=20)
         
         for i, (k, v) in enumerate(s_dict.items()):
             m, a = k.split("-")
@@ -420,7 +380,7 @@ class Explorer(ModelTranier):
                 axes[1].plot(percentages, v, label=a, color=colors[color_idx], marker="o")
             else:
                 axes[2].plot(percentages, v, label=a, color=colors[color_idx], marker="o")
-        titles = ["resnet", "resnetcbam", "resnetanr"]
+        
         for ax, title in zip(axes, titles):
             ax.grid(True)
             if self.data_type == "mnist":
@@ -434,6 +394,5 @@ class Explorer(ModelTranier):
                 ax.set_xlabel("% of recover")
             ax.set_title(title, fontsize=16)
             ax.legend()
-        suptitle = self.record_path.name.split(".")[0]
-        fig.suptitle(suptitle, fontsize=20, y=0.05)
+        
         plt.show()
