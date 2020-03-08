@@ -42,7 +42,7 @@ $ voila ./notebooks/Tutorial-01-XAI-Introduction.ipynb
 
 after this go to browser http://localhost:8866
 
-please visit http://app.soopace.com/ to see what's going on(open for ~02.25, not every time)
+~~please visit http://app.soopace.com/ to see what's going on(open for ~02.25, not every time)~~
 
 ### 3. training from scratch
 
