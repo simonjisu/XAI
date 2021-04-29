@@ -6,6 +6,5 @@ __pycache__
 .vscode
 *.log
 trained/*
-cifar10-temp.sh
-testnotebook/*
-weights/*
+backup/*
+data/*

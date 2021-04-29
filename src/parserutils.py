@@ -59,7 +59,7 @@ def argument_parsing(preparse=False):
     args = parser.parse_args()
     return args
 
-def get_parser(data_type, option, no_attention=False):
+def get_parser(data_type, option, no_attention=False, download=False):
     args_dict = {
         "mnist": {
             "roar": mnist_roar,
@@ -82,8 +82,8 @@ def get_parser(data_type, option, no_attention=False):
     return parser.parse_args(args.replace("\n", "  ").split("  "))
 
 mnist_roar= \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  mnist-roar
 -dt  mnist
 -et  roar
@@ -91,8 +91,8 @@ mnist_roar= \
 -mt  resnet  resnetcbam  resnetanr"""
 
 mnist_kar = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  mnist-kar
 -dt  mnist
 -et  kar
@@ -100,8 +100,8 @@ mnist_kar = \
 -mt  resnet  resnetcbam  resnetanr"""
 
 cifar10_roar_plain = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  cifar10-roar-plain
 -dt  cifar10
 -et  roar
@@ -109,8 +109,8 @@ cifar10_roar_plain = \
 -mt  resnet  resnetcbam  resnetanr"""
 
 cifar10_roar_rcd = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  cifar10-roar-rcd
 -dt  cifar10
 -et  roar
@@ -119,8 +119,8 @@ cifar10_roar_rcd = \
 -rcd  itu_r_bt2100"""
 
 cifar10_kar_rcd = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  cifar10-kar-rcd
 -dt  cifar10
 -et  kar
@@ -129,8 +129,8 @@ cifar10_kar_rcd = \
 -rcd  itu_r_bt2100"""
 
 cifar10_roar_rcd_fgm = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  cifar10-roar-rcd-fgm
 -dt  cifar10
 -et  roar
@@ -140,8 +140,8 @@ cifar10_roar_rcd_fgm = \
 -fgm"""
 
 cifar10_roar_rcd_noabs = \
-"""-pp  ../XAI
--dp  ../data
+"""-pp  .
+-dp  ./data
 -rf  cifar10-roar-rcd-noabs
 -dt  cifar10
 -et  roar

@@ -189,7 +189,7 @@ class ModelTranier(XaiTrainer):
 
     def build_dataset(self, args, shuffle=True, batch_size=None):
         train_dataset = self.dataset_dict[args.data_type](
-            root=args.data_path,                                
+            root=args.data_path,
             train=True,
             transform=self.transform_dict[args.data_type]["train"],
             download=args.download)

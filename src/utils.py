@@ -1,15 +1,15 @@
 __author__ = "simonjisu"
 
-from .trainsettings import ModelTranier
-import ipywidgets as widgets
-from pathlib import Path
-from collections import defaultdict
-import numpy as np
 import torch
 import torch.nn.functional as F
-from IPython.display import display
+import numpy as np
+import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from .trainsettings import ModelTranier
+from pathlib import Path
+from collections import defaultdict
+from IPython.display import display
 
 class Explorer(ModelTranier):
     def __init__(self, args):
@@ -25,8 +25,8 @@ class Explorer(ModelTranier):
         self.fill_global_mean = args.fill_global_mean
         self.no_abs_grad = args.no_abs_grad
         # path settings
-        self.prj_path = Path(args.prj_path)
-        self.sv_main_path = self.prj_path/"trained"/self.data_type
+        self.prj_path = Path(args.prj_path).absolute()
+        self.sv_main_path = self.prj_path/"trained"/"weights"/self.data_type
         self.record_main_path = self.prj_path/"trainlog"
         if self.reduce_color_dim is not None:
             self.sv_attr_path = self.sv_main_path/self.eval_type/self.reduce_color_dim
@@ -36,8 +36,6 @@ class Explorer(ModelTranier):
             self.sv_attr_path = self.sv_attr_path/"noabs"
         self.record_path = self.record_main_path/f"{args.record_file}.txt" 
         
-        _, self.test_dataset, *_ = self.build_dataset(args)
-        self.img_dict, self.idx_to_class = self.build_img_dict(self.test_dataset)
         # attenion options
         self.no_attention = args.no_attention
         self.attention_dict_default = {"none": None}
@@ -45,6 +43,15 @@ class Explorer(ModelTranier):
         self.attn_option = False
         self.attn_c_max = 3
         self.cam_max = 3
+
+        # dataset option
+        _, self.test_dataset, *_ = self.build_dataset(args)
+        self.img_dict, self.idx_to_class = self.build_img_dict(self.test_dataset)
+
+        # streamlit option
+        self.st_show = False
+        self.wg_reduce_dim = False
+        self.wg_attn_c = 0 
         
     def build_img_dict(self, dataset):
         """
@@ -146,7 +153,7 @@ class Explorer(ModelTranier):
 
         # TODO: generalize attention
         if m_type in ["resnetcbam", "resnetanr"]:
-            if "cbam"in m_type:
+            if "cbam" in m_type:
                 _ = attr_model.model.forward_map(masked_x_input)
                 self.attention_dict = defaultdict(list)
                 for k, v in attr_model.model.maps.items():
@@ -155,7 +162,7 @@ class Explorer(ModelTranier):
             else:
                 _ = attr_model.model.forward_map(masked_x_input)
                 self.attention_dict = attr_model.model.maps
-            self.wg_attn.options = self.attention_dict.keys()
+            # self.wg_attn.options = self.attention_dict.keys()
         else:
             self.attention_dict = self.attention_dict_default
 
@@ -163,7 +170,30 @@ class Explorer(ModelTranier):
         masked_img = self.convert_sizes(masked_x, byte=True)
         
         return pred, attribution, masked_img, masked_pred
-        
+
+    def forward_random(self, data_type, m_type, a_type):
+        r"""only use is at attention methods to get the attention layer information"""
+        if data_type == "mnist":
+            x = np.random.randint(0, 255, size=(28, 28)).astype(np.float32)
+        elif data_type == "cifar10":
+            x = np.random.randint(0, 255, size=(32, 32, 3)).astype(np.float32)
+        y = 0
+        del_p=10/100
+        cam=0
+        self.forward(x, y, m_type, a_type, del_p, cam)
+        attn = list(self.attention_dict.keys())[0]
+        if self.attention_dict.get(attn) is not None:
+            if self.wg_reduce_dim:
+                    self.attn_c_max = 0
+            else:
+                if m_type == "resnetcbam":
+                    c_attn, s_attn, out_attn = self.attention_dict.get(attn)
+                    self.attn_c_max = c_attn.size(1) - 1
+                elif m_type == "resnetanr":
+                    attn_tensor = self.attention_dict.get(attn).detach()
+                    self.attn_c_max = attn_tensor.size(1) - 1
+
+
     def create_widgets(self):
         style = {'description_width': 'initial'}
         self.wg_m_types = widgets.Dropdown(options=self.model_type, value=self.model_type[0], 
@@ -215,18 +245,17 @@ class Explorer(ModelTranier):
                                 "attn": self.wg_attn, "attn_c": self.wg_attn_c}
         return form, interactive_dict
         
-    # def draw_img(self, m_type, a_type, label, index, del_p, cam, attn, attn_c):
     def draw_img(self, **kwargs):
         if self.no_attention:
-            m_type, a_type, label, index, del_p, cam = kwargs.values()
+            m_type, a_type, label, index, del_p, cam, *_ = kwargs.values()
         else:
-            m_type, a_type, label, index, del_p, cam, attn, attn_c = kwargs.values()
+            m_type, a_type, label, index, del_p, cam, attn, attn_c, *_ = kwargs.values()
 
         label = self.class_to_idx[label]
         del_p /= 100
         img = self.img_dict[label]["imgs"][index]
         H, W = img.shape[0], img.shape[1]
-        pred, attribution, masked_img, masked_pred = self.forward(img, label, m_type, a_type, del_p, cam)
+        pred, attribution, masked_img, masked_pred = self.forward(img, label, m_type, a_type, del_p, cam)        
         fig = plt.figure(figsize=(16, 10))
 
         fig_ax1 = fig.add_subplot(141)
@@ -244,18 +273,22 @@ class Explorer(ModelTranier):
         
         fig_ax4 = fig.add_subplot(144)
         fig_ax4.imshow(masked_img)
-        titles = [f"Predict: {self.idx_to_class.get(pred)}", "Attribution Map", "Model is Looking at",
-                  f"Masked Image\nPredict: {self.idx_to_class.get(masked_pred)}"]
+        titles = [f"Model Predict: {self.idx_to_class.get(pred)}", "Attribution Map", "Model is Looking at",
+                  f"Masked Image\nModel Predict: {self.idx_to_class.get(masked_pred)}"]
         for ax, title in zip([fig_ax1, fig_ax2, fig_ax3, fig_ax4], titles):
-            ax.set_title(title)
+            ax.set_title(title, fontsize=14)
             ax.axis("off")
         
         if not self.no_attention:
             # draw attention
             fig2 = plt.figure(figsize=(14, 5), constrained_layout=False)
+            if not self.st_show:
+                # set attention options from attention dictionary
+                self.wg_attn.options = self.attention_dict.keys()
+            
             if self.attention_dict.get(attn) is not None:            
                 if "cbam" in m_type:
-                    gs = fig2.add_gridspec(nrows=3, ncols=6, hspace=0.1, wspace=0.4)
+                    gs = fig2.add_gridspec(nrows=3, ncols=6, hspace=0.2, wspace=0.4)
                     f2_ax1 = fig2.add_subplot(gs[0, :])
                     f2_ax2 = fig2.add_subplot(gs[1:, :2])
                     f2_ax3 = fig2.add_subplot(gs[1:, 2:4])
@@ -276,19 +309,29 @@ class Explorer(ModelTranier):
                     
                     f2_ax3.imshow(img)
                     f2_ax3.matshow(s_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
-                    f2_ax3.set_title(f"Spatial Attentions(Interpolated)")
+                    f2_ax3.set_title(f"Spatial Attentions(Interpolated)", y=1.0)
                     f2_ax3.axis("off")
-                    
-                    if self.wg_reduce_dim.value:
-                        self.wg_attn_c.max = 0
-                        self.wg_attn_c.set_trait("value", 0)
-                        t_out_attn = out_attn.mean(1).unsqueeze(1)  # (1, 1, H, W)
+
+                    # im4 output attention figure
+                    if self.st_show:
+                        if self.wg_reduce_dim:
+                            t_out_attn = out_attn.mean(1).unsqueeze(1)  # (1, 1, H, W)
+                        else:
+                            s_idx = self.wg_attn_c
+                            t_out_attn = out_attn[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
                     else:
-                        self.wg_attn_c.max = c_attn.size(1) - 1
-                        # self.wg_attn_c.set_trait("value", 0)
-                        s_idx = self.wg_attn_c.value
-                        t_out_attn = out_attn[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
-                        
+                        if self.wg_reduce_dim.value:
+                            self.attn_c_max = 0
+                            self.wg_attn_c.max = self.attn_c_max
+                            self.wg_attn_c.set_trait("value", 0)
+                            t_out_attn = out_attn.mean(1).unsqueeze(1)  # (1, 1, H, W)
+                        else:
+                            self.attn_c_max = c_attn.size(1) - 1
+                            self.wg_attn_c.max = self.attn_c_max
+                            # self.wg_attn_c.set_trait("value", 0)
+                            s_idx = self.wg_attn_c.value
+                            t_out_attn = out_attn[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+
                     im4 = f2_ax4.matshow(t_out_attn.squeeze(0).squeeze(0), cmap="rainbow")
                     f2_ax4.set_title(f"Output after Attention")
                     f2_ax4.xaxis.set_ticks_position('bottom')
@@ -306,26 +349,35 @@ class Explorer(ModelTranier):
                     f2_ax2 = fig2.add_subplot(gs[0, 1])
 
                     attn_tensor = self.attention_dict.get(attn).detach()  # (1, C, H, W)
-                    if self.wg_reduce_dim.value:
-                        self.wg_attn_c.max = 0
-                        self.wg_attn_c.set_trait("value", 0)
-                        t_attn = torch.exp(attn_tensor)  # (1, K, H, W)
-                        t_attn = t_attn.mean(1, keepdim=True)  # (1, 1, H, W)
-                        t_attn = t_attn.view(-1).softmax(-1).view_as(t_attn)
-                        # .max(1, keepdim=True)[0]  
-                        # *_, H_attn, W_attn = t_attn.size()
-                        # t_attn = t_attn.view(-1).view(1, 1, H_attn, W_attn)  
-                        t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
-                        sub_title = "Collapsed"
+                    if self.st_show:
+                        if self.wg_reduce_dim:
+                            t_attn = torch.exp(attn_tensor)  # (1, K, H, W)
+                            t_attn = t_attn.mean(1, keepdim=True)  # (1, 1, H, W)
+                            t_attn = t_attn.view(-1).softmax(-1).view_as(t_attn)
+                            t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                            sub_title = "Collapsed"
+                        else:
+                            s_idx = self.wg_attn_c
+                            t_attn = attn_tensor[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+                            t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                            sub_title = ""
                     else:
-                        self.wg_attn_c.max = attn_tensor.size(1) - 1
-                        s_idx = self.wg_attn_c.value
-                        t_attn = attn_tensor[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
-                        # t_attn = torch.exp(t_attn)  # exp
-                        t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
-                        sub_title = ""
+                        if self.wg_reduce_dim.value:
+                            self.wg_attn_c.max = 0
+                            self.wg_attn_c.set_trait("value", 0)
+                            t_attn = torch.exp(attn_tensor)  # (1, K, H, W)
+                            t_attn = t_attn.mean(1, keepdim=True)  # (1, 1, H, W)
+                            t_attn = t_attn.view(-1).softmax(-1).view_as(t_attn) 
+                            t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                            sub_title = "Collapsed"
+                        else:
+                            self.wg_attn_c.max = attn_tensor.size(1) - 1
+                            s_idx = self.wg_attn_c.value
+                            t_attn = attn_tensor[:, s_idx, :, :].unsqueeze(1)  # (1, 1, H, W)
+                            t_attn_interpolated = F.interpolate(t_attn, size=(H, W), mode="bilinear", align_corners=False).squeeze(0)  # (1, H, W)
+                            sub_title = ""
                     
-                    im1 = f2_ax1.imshow(t_attn.squeeze(0).squeeze(0), cmap="rainbow")#, vmin=0.0, vmax=1.0)
+                    im1 = f2_ax1.imshow(t_attn.squeeze(0).squeeze(0), cmap="rainbow", vmin=0.0, vmax=1.0)
                     f2_ax1.set_title(f"Attention Head {sub_title}")
                     f2_ax1.xaxis.set_ticks_position('bottom')
                     divider = make_axes_locatable(f2_ax1)
@@ -336,12 +388,21 @@ class Explorer(ModelTranier):
                     f2_ax2.imshow(t_attn_interpolated.squeeze(0), cmap="rainbow", alpha=0.5)
                     f2_ax2.set_title(f"Attention Head {sub_title}(Interpolated)")
                     f2_ax2.axis("off")
-
-                plt.show()
+                if self.st_show:
+                    return fig, fig2
+                else:
+                    plt.show()
             else:
-                # self.wg_attn.set_trait("value", "none")
-                plt.close(fig2)
-            
+                if self.st_show:
+                    return fig, None
+                else:
+                    plt.close(fig2)
+        else:
+            if self.st_show:
+                return fig, None
+            else:
+                plt.show()
+
     def show(self):
         form, interactive_dict = self.create_widgets()
         out = widgets.interactive_output(self.draw_img, interactive_dict)        
@@ -395,4 +456,19 @@ class Explorer(ModelTranier):
             ax.set_title(title, fontsize=16)
             ax.legend()
         
-        plt.show()
+        if self.st_show:
+            return fig
+        else:
+            plt.show()
+
+    def streamlit_get_wg_args(self):
+        pass
+
+    def streamlit_show(self, wg_dict):
+        self.st_show = True
+        self.wg_reduce_dim = False if wg_dict.get("reduct_dim") is None else wg_dict.get("reduct_dim")
+        self.wg_attn_c = 0 if wg_dict.get("attn_c") is None else wg_dict.get("attn_c")
+        
+        fig1, fig2 = self.draw_img(**wg_dict)
+        eval_fig = self.show_eval()
+        return fig1, fig2, eval_fig
