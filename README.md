@@ -18,8 +18,11 @@ jupyter >= 1.0.0
 
 ## Run in Docker
 
+better use nvidia-docker to run it, if you don't have nvidia-docker, please remove `--runtime=nvidia` option
+
 ```
-$ docker pull https://
+$ docker pull simonjisu/xaivision:v1.0
+$ docker run -it -d --name xai -p 7013:7013 --runtime=nvidia simonjisu/xaivision:v1.0
 ```
 
 ## Run in local
