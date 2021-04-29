@@ -14,4 +14,4 @@ fi
 
 python ./src/downutils.py -id "1Av8B5gjKVL-vM-TvivKL1wNXmvaA4DMO" -to "./weights.tar"
 tar -xvf ./weights.tar -C trained
-rm ./weight.tar
+rm ./weights.tar
